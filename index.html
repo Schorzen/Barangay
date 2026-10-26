@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Barangay Talisay – Access-controlled records</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#EDF1F4;--surface:#fff;--ink:#16263B;--mute:#5C6B7D;--line:#D5DDE5;--navy:#1F3A5F;--sun:#F2B632;--coral:#C8452D;--teal:#1E8A7A;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0F1824;--surface:#17263A;--ink:#E8EEF5;--mute:#93A3B8;--line:#2A3D55;--navy:#2B4F7E;--coral:#E8715A;--teal:#46B8A6}}
+:root[data-theme="dark"]{--bg:#0F1824;--surface:#17263A;--ink:#E8EEF5;--mute:#93A3B8;--line:#2A3D55;--navy:#2B4F7E;--coral:#E8715A;--teal:#46B8A6}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 "Source Sans 3",system-ui,sans-serif}
+h1,h2,h3{font-family:"Bricolage Grotesque",system-ui,sans-serif;margin:0;line-height:1.15}
+header{background:var(--navy);color:#fff;padding:16px 16px 0}
+header h1{font-size:1.45rem}
+header p{margin:3px 0 12px;opacity:.8;font-size:.9rem}
+.who{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.who button{font:600 .88rem "Source Sans 3",sans-serif;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:99px;padding:6px 13px;cursor:pointer}
+.who button[aria-pressed=true]{background:var(--sun);color:#16263B;border-color:var(--sun)}
+nav{display:flex;gap:2px;overflow-x:auto}
+nav button{flex:none;background:none;border:0;color:inherit;opacity:.72;font:600 .93rem "Source Sans 3",sans-serif;padding:10px 12px;border-bottom:3px solid transparent;cursor:pointer}
+nav button[aria-selected=true]{opacity:1;border-color:var(--sun)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+main{max-width:980px;margin:0 auto;padding:14px 16px 28px}
+.me{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:10px 14px;margin-bottom:12px;font-size:.93rem}
+.me b{font-family:"Bricolage Grotesque",sans-serif}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(145px,1fr))}
+.stat{background:var(--surface);border-left:5px solid var(--navy);padding:11px 14px;border-radius:4px}
+.stat b{display:block;font:700 1.75rem "Bricolage Grotesque",sans-serif}
+.stat span{color:var(--mute);font-size:.88rem}
+.stat.w{border-color:var(--coral)}.stat.o{border-color:var(--teal)}.stat.s{border-color:var(--sun)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:15px;margin-top:12px}
+.panel h2{font-size:1.1rem;margin-bottom:9px}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.91rem}
+th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--mute);font-weight:600}
+.tag{display:inline-block;padding:2px 9px;border-radius:99px;font-size:.8rem;font-weight:600;background:#E3E7EB;color:#33414F}
+.on{background:#D3EFE9;color:#0E5A4E}.off{background:#FBE3E0;color:#8A2B1B}.due{background:#FBE3A6;color:#5A4208}
+.btn{font:600 .83rem "Source Sans 3",sans-serif;background:var(--navy);color:#fff;border:0;border-radius:4px;padding:6px 11px;cursor:pointer}
+.lock{text-align:center;padding:34px 12px}
+.lock h2{color:var(--coral);margin-bottom:6px}
+.log{list-style:none;margin:0;padding:0;font-size:.92rem}
+.log li{display:grid;grid-template-columns:64px 1fr;gap:8px;padding:7px 0;border-bottom:1px solid var(--line)}
+.log time{color:var(--mute)}
+.log .bad{color:var(--coral);font-weight:600}
+.bar{display:grid;grid-template-columns:120px 1fr 70px;gap:8px;align-items:center;margin:7px 0;font-size:.92rem}
+.bar i{display:block;height:14px;background:var(--navy);border-radius:2px}
+.bar em{font-style:normal;text-align:right;color:var(--mute)}
+.note{color:var(--mute);font-size:.85rem;margin-top:8px}
+.y{color:var(--teal);font-weight:700}.n{color:var(--mute)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Barangay Talisay</h1>
+  <p>Santa Fe, Cebu · Sample records system, all names and figures are made up</p>
+  <div class="who" id="who" role="group" aria-label="Sign in as"></div>
+  <nav id="nav" role="tablist"></nav>
+</header>
+<main>
+  <div class="me" id="me"></div>
+  <div id="view"></div>
+</main>
+<script>
+var ROLES={
+ captain:{label:"Punong Barangay",name:"Roberto Alcoseba",mods:["users","health","finance","records","rules"]},
+ secretary:{label:"Secretary",name:"Marites Gonzaga",mods:["records","rules"]},
+ treasurer:{label:"Treasurer",name:"Elena Pacaña",mods:["finance","rules"]},
+ bhw:{label:"BHW",name:"Lourdes Ouano",mods:["health","rules"]}};
+var MODS={users:"Users and activity",health:"Health files",finance:"Finance files",records:"Records and certificates",rules:"Access rules"};
+var USERS=[["Roberto Alcoseba","captain","Oct 26, 8:02 AM","Reviewed monthly report",1],["Marites Gonzaga","secretary","Oct 26, 8:15 AM","Approved clearance BC-2610-041",1],["Elena Pacaña","treasurer","Oct 25, 4:40 PM","Issued OR-1043",1],["Lourdes Ouano","bhw","Oct 25, 11:20 AM","Updated immunization list",1]];
+var LOG=[["8:15","Marites Gonzaga (Secretary) opened Records"],["8:02","Roberto Alcoseba (Punong Barangay) signed in"],["Oct 25","Elena Pacaña (Treasurer) issued OR-1043"],["Oct 25","Lourdes Ouano (BHW) updated immunization list"]];
+var cur="captain",tab="users";
+function $(i){return document.getElementById(i)}
+function tbl(h,r){return '<div class="scroll"><table><thead><tr>'+h.map(function(x){return'<th>'+x+'</th>'}).join('')+'</tr></thead><tbody>'+r.map(function(x){return'<tr>'+x.map(function(c){return'<td>'+c+'</td>'}).join('')+'</tr>'}).join('')+'</tbody></table></div>'}
+function stats(a){return '<div class="grid">'+a.map(function(s){return'<div class="stat '+(s[2]||'')+'"><b>'+s[0]+'</b><span>'+s[1]+'</span></div>'}).join('')+'</div>'}
+function now(){return new Date().toLocaleTimeString([], {hour:"numeric",minute:"2-digit"})}
+function log(t,bad){LOG.unshift([now(),t,bad])}
+function who(){var r=ROLES[cur];return r.name+" ("+r.label+")"}
+
+var V={
+users:function(){
+ return stats([[USERS.filter(function(u){return u[4]}).length,"Active accounts","o"],[USERS.length,"Total accounts"],[LOG.filter(function(l){return l[2]}).length,"Denied attempts","w"]])+
+ '<div class="panel"><h2>Who has access to the database</h2>'+tbl(["Name","Role","Status","Last sign-in","Last action",""],USERS.map(function(u,i){
+  return [u[0],ROLES[u[1]].label,'<span class="tag '+(u[4]?'on':'off')+'">'+(u[4]?'Active':'Deactivated')+'</span>',u[2],u[3],u[1]==="captain"?"":'<button class="btn" data-u="'+i+'">'+(u[4]?"Deactivate":"Reactivate")+'</button>']}))+
+ '</div><div class="panel"><h2>Activity log</h2><ul class="log">'+LOG.map(function(l){return'<li><time>'+l[0]+'</time><span class="'+(l[2]?'bad':'')+'">'+l[1]+'</span></li>'}).join('')+'</ul></div>'},
+health:function(){
+ return stats([["187","Children 0–5 monitored","o"],["23","Pregnant women","s"],["31","Due for immunization","w"],["412","Senior citizens"]])+
+ '<div class="panel"><h2>Patient and program files</h2>'+tbl(["Name","Purok","Program","Last visit","Status"],[
+ ["Baby Jhon Villaruz","Purok 2","Immunization","Oct 21",'<span class="tag due">Due: MMR</span>'],
+ ["Analyn Cabahug","Purok 4","Prenatal","Oct 22",'<span class="tag on">On schedule</span>'],
+ ["Lolo Ernesto Booc","Purok 1","Senior check-up","Oct 19",'<span class="tag on">Done</span>'],
+ ["Baby Mia Tumulak","Purok 3","Nutrition (weighing)","Oct 18",'<span class="tag due">Underweight</span>'],
+ ["Rosalie Sabellona","Purok 5","Family planning","Oct 15",'<span class="tag on">Done</span>']])+
+ '<p class="note">Medical details stay here. Finance and records staff cannot open these files.</p></div>'},
+finance:function(){
+ var s=[["Business clearances",11200],["Barangay clearances",6450],["Hall rental",3500],["Other fees",1150]];
+ return stats([["₱22,300","Collected this month","o"],["₱14,820","Spent this month","w"],["₱7,480","Balance","s"]])+
+ '<div class="panel"><h2>Collections by source</h2>'+s.map(function(x){return'<div class="bar"><span>'+x[0]+'</span><i style="width:'+x[1]/120+'%"></i><em>₱'+x[1].toLocaleString()+'</em></div>'}).join('')+'</div>'+
+ '<div class="panel"><h2>Official receipts</h2>'+tbl(["OR no.","Payer","Item","Amount","Date"],[
+ ["OR-1041","Maria Cabahug","Barangay clearance","₱50","Oct 26"],["OR-1042","J. Tumulak","Business clearance","₱300","Oct 26"],["OR-1043","R. Booc","Certificate of residency","₱30","Oct 25"],["OR-1044","L. Sabellona","Hall rental","₱500","Oct 24"]])+'</div>'},
+records:function(){
+ return stats([["4,312","Residents"],["986","Households"],["2,874","Registered voters","s"],["6","Open requests","w"]])+
+ '<div class="panel"><h2>Resident registry</h2>'+tbl(["ID","Name","Age","Purok","Sector"],[
+ ["R-0001","Maria Cabahug",34,"Purok 1","Solo parent"],["R-0002","Jose Booc",67,"Purok 3","Senior citizen"],["R-0003","Ana Villaruz",22,"Purok 2","None"],["R-0004","Ramon Tumulak",45,"Purok 4","PWD"],["R-0005","Liza Sabellona",29,"Purok 3","4Ps"]])+'</div>'+
+ '<div class="panel"><h2>Certificate requests</h2>'+tbl(["Ref","Resident","Request","Status"],[
+ ["BC-2610-041","Maria Cabahug","Barangay clearance",'<span class="tag due">Received</span>'],["BC-2610-042","Jose Booc","Certificate of indigency",'<span class="tag">Verified</span>'],["BC-2610-043","Ana Villaruz","Certificate of residency",'<span class="tag on">Approved</span>']])+'</div>'+
+ '<div class="panel"><h2>Blotter</h2>'+tbl(["Case","Incident","Status"],[["BL-118","Noise complaint, Purok 4","Mediation"],["BL-119","Boundary dispute, Purok 2","Open"]])+'</div>'},
+rules:function(){
+ var rows=Object.keys(MODS).filter(function(k){return k!=="rules"}).map(function(m){
+  return [MODS[m]].concat(Object.keys(ROLES).map(function(r){return ROLES[r].mods.indexOf(m)>-1?'<span class="y">Yes</span>':'<span class="n">No</span>'}))});
+ return '<div class="panel"><h2>Who can open what</h2>'+tbl(["Files"].concat(Object.keys(ROLES).map(function(r){return ROLES[r].label})),rows)+
+ '<p class="note">The Punong Barangay can open every file and sees every account and sign-in. Each denied attempt is written to the activity log.</p></div>'+
+ '<div class="panel"><h2>How access is checked</h2>'+tbl(["Step","What happens"],[["1","Staff signs in with a personal account"],["2","The system reads the account’s role"],["3","Only the folders for that role are opened; others show “Restricted”"],["4","Every sign-in, view and denied attempt is logged"],["5","The Punong Barangay reviews the log and can deactivate an account"]])+'</div>'}
+};
+
+function draw(){
+ var r=ROLES[cur];
+ $("who").innerHTML=Object.keys(ROLES).map(function(k){return'<button data-r="'+k+'" aria-pressed="'+(k===cur)+'">'+ROLES[k].label+'</button>'}).join('');
+ $("nav").innerHTML=Object.keys(MODS).map(function(m){var ok=r.mods.indexOf(m)>-1;return'<button role="tab" data-t="'+m+'" aria-selected="'+(m===tab)+'">'+(ok?'':'🔒 ')+MODS[m]+'</button>'}).join('');
+ $("me").innerHTML='Signed in as <b>'+r.name+'</b>, '+r.label+(cur==="captain"?'. You can open every file.':'. You can open only: '+r.mods.filter(function(m){return m!=="rules"}).map(function(m){return MODS[m]}).join(", ")+'.');
+ $("view").innerHTML=r.mods.indexOf(tab)>-1?V[tab]():'<div class="panel lock"><h2>Restricted</h2><p>'+MODS[tab]+' are not part of the '+r.label+' role. This attempt was recorded for the Punong Barangay.</p></div>';
+}
+function go(t){tab=t;if(ROLES[cur].mods.indexOf(t)<0&&t!=="rules")log(who()+" tried to open "+MODS[t]+" (denied)",1);try{history.replaceState(null,"","#"+t)}catch(e){}draw()}
+$("who").onclick=function(e){var b=e.target.closest("button");if(!b)return;cur=b.dataset.r;tab=ROLES[cur].mods[0];log(who()+" signed in");USERS.forEach(function(u){if(u[1]===cur){u[2]="Today, "+now()}});draw()};
+$("nav").onclick=function(e){var b=e.target.closest("button");if(b)go(b.dataset.t)};
+$("view").onclick=function(e){var b=e.target.closest("button[data-u]");if(!b)return;var u=USERS[b.dataset.u];u[4]=u[4]?0:1;log(who()+(u[4]?" reactivated ":" deactivated ")+u[0]);draw()};
+var h=location.hash.slice(1);if(MODS[h])tab=h;draw();
+</script>
+</body>
+</html>
