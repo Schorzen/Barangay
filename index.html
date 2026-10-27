@@ -3,38 +3,55 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
 <title>Barangay Talisay Records System</title>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
-:root{--bg:#EDF1F4;--surface:#fff;--ink:#16263B;--mute:#5C6B7D;--line:#D5DDE5;--navy:#1F3A5F;--sun:#F2B632;--coral:#C8452D;--teal:#1E8A7A}
-@media (prefers-color-scheme:dark){:root{--bg:#0F1824;--surface:#17263A;--ink:#E8EEF5;--mute:#93A3B8;--line:#2A3D55;--navy:#2B4F7E;--coral:#E8715A;--teal:#46B8A6}}
-*{box-sizing:border-box}
-html,body{margin:0}
-body{background:var(--bg);color:var(--ink);font:400 16px/1.5 "Source Sans 3",system-ui,sans-serif;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+:root{--ink:#EAF0F8;--mute:#A9B8CC;--sun:#F2B632;--coral:#FF8F7A;--teal:#4FD1BC;--line:rgba(255,255,255,.18);--glass:rgba(255,255,255,.09);color-scheme:dark}
+*{box-sizing:border-box}html,body{margin:0}
+body{color:var(--ink);font:400 16px/1.5 "Source Sans 3",system-ui,sans-serif;min-height:100vh;padding-bottom:env(safe-area-inset-bottom,0px);background:#0A1628}
+body::before{content:"";position:fixed;inset:0;z-index:-1;background:radial-gradient(600px 420px at 8% 0%,rgba(242,182,50,.38),transparent 60%),radial-gradient(720px 520px at 100% 25%,rgba(30,160,140,.45),transparent 60%),radial-gradient(640px 520px at 25% 100%,rgba(80,110,220,.42),transparent 60%),#0A1628}
 h1,h2{font-family:"Bricolage Grotesque",system-ui,sans-serif;margin:0;line-height:1.15}
-header{background:var(--navy);color:#fff;padding:14px 16px 0}
-.top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
-header h1{font-size:1.4rem}header p{margin:2px 0 10px;opacity:.8;font-size:.88rem}
-nav{display:flex;gap:2px;overflow-x:auto}
-nav button{flex:none;background:none;border:0;color:#fff;opacity:.72;font:600 .93rem "Source Sans 3",sans-serif;padding:10px 12px;border-bottom:3px solid transparent;cursor:pointer}
-nav button[aria-selected=true]{opacity:1;border-color:var(--sun)}
-main{max-width:980px;margin:0 auto;padding:14px 16px 30px}
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:15px;margin-top:12px}
-.panel h2{font-size:1.1rem;margin-bottom:9px}
-.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(145px,1fr))}
-.stat{background:var(--surface);border-left:5px solid var(--navy);padding:11px 14px;border-radius:4px}
-.stat b{display:block;font:700 1.6rem "Bricolage Grotesque",sans-serif}.stat span{color:var(--mute);font-size:.88rem}
-.scroll{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:.91rem}
-th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}th{color:var(--mute);font-weight:600}
-.btn{font:600 .85rem "Source Sans 3",sans-serif;background:var(--navy);color:#fff;border:0;border-radius:4px;padding:8px 13px;cursor:pointer}
-.btn.alt{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.4)}
-.btn:focus-visible,input:focus-visible,select:focus-visible,nav button:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
-.frm{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));align-items:end;margin-bottom:12px}
-label{font-size:.82rem;color:var(--mute);display:grid;gap:3px}
-input,select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink);min-width:0;width:100%}
-.login{max-width:380px;margin:40px auto}.login .frm{grid-template-columns:1fr}
-#msg{margin:12px 0 0;padding:9px 12px;border-radius:4px;background:#FBE3E0;color:#8A2B1B;font-size:.92rem}
+.glass,.panel,.stat,dialog,header{background:var(--glass);-webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%);border:1px solid var(--line)}
+header{position:sticky;top:0;z-index:5;border-width:0 0 1px;padding:calc(12px + env(safe-area-inset-top,0px)) 16px 0;background:rgba(10,22,40,.55)}
+.top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;max-width:1000px;margin:0 auto}
+header h1{font-size:1.4rem}header p{margin:2px 0 10px;color:var(--mute);font-size:.88rem}
+.me{text-align:right;font-size:.86rem;color:var(--mute)}.me b{color:var(--ink);display:block}
+nav{display:flex;gap:6px;overflow-x:auto;max-width:1000px;margin:0 auto;padding-bottom:10px}
+nav button{flex:none;background:none;border:1px solid transparent;color:var(--mute);font:600 .92rem "Source Sans 3",sans-serif;padding:7px 15px;border-radius:99px;cursor:pointer}
+nav button[aria-selected=true]{background:rgba(255,255,255,.16);border-color:var(--line);color:var(--sun)}
+main{max-width:1000px;margin:0 auto;padding:6px 16px 36px}
+.panel{border-radius:18px;padding:16px;margin-top:14px;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+.panel h2{font-size:1.1rem;margin-bottom:10px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-top:14px}
+.stat{border-radius:16px;padding:12px 16px;border-top:3px solid var(--sun)}
+.stat:nth-child(2){border-top-color:var(--teal)}.stat:nth-child(3){border-top-color:var(--coral)}
+.stat b{display:block;font:700 1.7rem "Bricolage Grotesque",sans-serif}.stat span{color:var(--mute);font-size:.88rem}
+.scroll{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:.92rem}
+th,td{text-align:left;padding:9px 8px;border-bottom:1px solid rgba(255,255,255,.1);white-space:nowrap}
+th{color:var(--mute);font-weight:600;font-size:.82rem;text-transform:uppercase;letter-spacing:.04em}
+tbody tr:hover{background:rgba(255,255,255,.06)}
+.chip{display:inline-block;padding:2px 10px;border-radius:99px;font-size:.78rem;font-weight:600;background:rgba(255,255,255,.14)}
+.chip.received{background:rgba(242,182,50,.25);color:#FFD87A}.chip.verified{background:rgba(110,150,255,.25);color:#B5CAFF}
+.chip.approved{background:rgba(79,209,188,.25);color:#8CEBDA}.chip.released{background:rgba(255,255,255,.14);color:var(--mute)}
+.btn{font:600 .88rem "Source Sans 3",sans-serif;background:linear-gradient(135deg,#F7C548,#E58E26);color:#1B1304;border:0;border-radius:10px;padding:9px 15px;cursor:pointer}
+.btn.ghost,.ic{background:rgba(255,255,255,.1);color:var(--ink);border:1px solid var(--line)}
+.btn.danger,.ic.del{background:rgba(255,143,122,.16);color:var(--coral);border:1px solid rgba(255,143,122,.4)}
+.ic{font:600 .78rem "Source Sans 3",sans-serif;border-radius:8px;padding:4px 10px;cursor:pointer;margin-right:4px}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+@media (prefers-reduced-motion:no-preference){.btn,.ic,nav button{transition:transform .15s,background .15s}.btn:hover{transform:translateY(-1px)}}
+.frm{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));align-items:end;margin-bottom:14px}
+.frm.one{grid-template-columns:1fr;margin:12px 0 0}.acts{display:flex;gap:8px}
+label{font-size:.8rem;color:var(--mute);display:grid;gap:4px}
+input,select{font:inherit;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.08);color:var(--ink);min-width:0;width:100%}
+input::placeholder{color:var(--mute)}input[type=checkbox]{width:auto}
+.search{max-width:300px;margin-bottom:10px}
+.login{max-width:390px;margin:56px auto}.login .frm{grid-template-columns:1fr}
+#msg{margin:14px 0 0;padding:10px 14px;border-radius:12px;background:rgba(255,143,122,.2);border:1px solid rgba(255,143,122,.5);font-size:.92rem}
+#msg.good{background:rgba(79,209,188,.2);border-color:rgba(79,209,188,.5)}
+dialog{color:var(--ink);border-radius:20px;padding:20px;width:min(460px,calc(100% - 32px));background:rgba(20,34,58,.82);box-shadow:0 20px 60px rgba(0,0,0,.5)}
+dialog::backdrop{background:rgba(5,10,20,.6);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px)}
 .note{color:var(--mute);font-size:.85rem}.bad{color:var(--coral);font-weight:600}
 </style>
 </head>
@@ -44,73 +61,84 @@ input,select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-r
   <nav id="nav" role="tablist"></nav>
 </header>
 <main><div id="msg" hidden></div><div id="view"></div></main>
+<dialog id="dlg"></dialog>
 <script>
-// === SETTINGS: paste your Supabase Project URL below ===
 const SB_URL="https://iloftktissjnikmyedfj.supabase.co";
 const SB_KEY="sb_publishable_nyThP0h3QcRKGlRiqMinaQ_yNKI2Ej4";
-// =======================================================
 const sb=supabase.createClient(SB_URL,SB_KEY);
 const $=i=>document.getElementById(i);
 const LABEL={captain:"Punong Barangay",secretary:"Secretary",treasurer:"Treasurer",bhw:"BHW"};
 const MODS={users:"Users",audit:"Activity log",records:"Records",finance:"Finance",health:"Health"};
-const OWN={records:"secretary",finance:"treasurer",health:"bhw"};
 const NEXT={received:"verified",verified:"approved",approved:"released"};
-let me=null,tab=null;
+const opt=a=>a.map(x=>[x,x]);
+const TYPES=opt(["Barangay clearance","Certificate of indigency","Certificate of residency","Business clearance"]);
+const PROG=opt(["Immunization","Prenatal","Senior check-up","Nutrition","Family planning"]);
+const BST=[["open","Open"],["mediation","Mediation"],["settled","Settled"],["referred","Referred"]];
+let me=null,tab=null,PU=[],RES=[],ROWS={};
+const CFG={
+ residents:{n:"resident",f:()=>[["full_name","Full name","text"],["birthdate","Birthdate","date","opt"],["sex","Sex","select",[["M","Male"],["F","Female"]]],["purok_id","Purok","select",PU],["sector","Sector (optional)","text","opt"]]},
+ requests:{n:"request",x:()=>[["resident_id","Resident","select",RES]],f:e=>[["type","Type","select",TYPES]].concat(e?[["status","Status","select",opt(Object.keys(NEXT).concat("released"))]]:[])},
+ blotter:{n:"blotter case",f:()=>[["case_no","Case no.","text"],["incident","Incident","text"],["status","Status","select",BST]]},
+ payments:{n:"receipt",f:()=>[["or_no","OR no.","text"],["payer_name","Payer","text"],["item","Item","text"],["amount","Amount","number"]]},
+ expenses:{n:"expense",f:()=>[["description","Description","text"],["amount","Amount","number"]]},
+ health_records:{n:"health record",x:()=>[["resident_id","Resident","select",RES]],f:()=>[["program","Program","select",PROG],["status","Status","text","opt"],["notes","Notes","text","opt"]]}
+};
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const cell=c=>c&&c.h!==undefined?c.h:esc(c);
-const tbl=(h,r)=>'<div class="scroll"><table><thead><tr>'+h.map(x=>'<th>'+x+'</th>').join('')+'</tr></thead><tbody>'+(r.length?r.map(x=>'<tr>'+x.map(c=>'<td>'+cell(c)+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="'+h.length+'">Nothing here yet.</td></tr>')+'</tbody></table></div>';
+const tbl=(h,r,id)=>'<div class="scroll"><table><thead><tr>'+h.map(x=>'<th>'+x+'</th>').join('')+'</tr></thead><tbody'+(id?' id="'+id+'"':'')+'>'+(r.length?r.map(x=>'<tr>'+x.map(c=>'<td>'+cell(c)+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="'+h.length+'">Nothing here yet.</td></tr>')+'</tbody></table></div>';
 const when=t=>t?new Date(t).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):"Never";
 const peso=n=>"₱"+Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
-const opts=a=>a.map(o=>'<option value="'+esc(o[0])+'">'+esc(o[1])+'</option>').join('');
-function form(name,fields,btn){return '<form class="frm" data-f="'+name+'">'+fields.map(f=>'<label>'+f[1]+(f[2]==="select"?'<select name="'+f[0]+'" required>'+opts(f[3])+'</select>':'<input name="'+f[0]+'" type="'+f[2]+'"'+(f[2]==="number"?' step="0.01" min="0"':'')+(f[3]==="opt"?'':' required')+'>')+'</label>').join('')+'<button class="btn">'+btn+'</button></form>'}
-function say(t){const m=$("msg");m.textContent=t||"";m.hidden=!t}
-const ok=r=>{if(r.error){say(r.error.message);return false}say("");return true};
-
-const H={
- resident:o=>sb.from("residents").insert({full_name:o.full_name,birthdate:o.birthdate||null,sex:o.sex,purok_id:o.purok_id,sector:o.sector||null}),
- request:o=>sb.from("requests").insert({ref_no:"REQ-"+new Date().toISOString().slice(2,7).replace("-","")+"-"+Math.floor(100+Math.random()*900),resident_id:o.resident_id,type:o.type}),
- payment:o=>sb.from("payments").insert({or_no:o.or_no,payer_name:o.payer_name,item:o.item,amount:+o.amount}),
- expense:o=>sb.from("expenses").insert({description:o.description,amount:+o.amount}),
- health:o=>sb.from("health_records").insert({resident_id:o.resident_id,program:o.program,status:o.status||null,notes:o.notes||null})
-};
+const chip=s=>({h:'<span class="chip '+esc(s)+'">'+esc(s)+'</span>'});
+const opts=(a,v)=>a.map(o=>'<option value="'+esc(o[0])+'"'+(o[0]==v?' selected':'')+'>'+esc(o[1])+'</option>').join('');
+const fld=(f,v)=>'<label>'+f[1]+(f[2]==="select"?'<select name="'+f[0]+'" required>'+opts(f[3],v)+'</select>':'<input name="'+f[0]+'" type="'+f[2]+'"'+(f[2]==="number"?' step="0.01" min="0"':'')+(f[3]==="opt"?'':' required')+' value="'+esc(v??"")+'">')+'</label>';
+const form=(name,fields,btn)=>'<form class="frm" data-f="'+name+'">'+fields.map(f=>fld(f)).join('')+'<button class="btn">'+btn+'</button></form>';
+const keep=(t,a)=>{ROWS[t]=Object.fromEntries((a||[]).map(x=>[x.id,x]))};
+const act=(t,id,w)=>w?'<button class="ic" data-edit="'+t+'|'+id+'">Edit</button><button class="ic del" data-del="'+t+'|'+id+'">Delete</button>':"";
+const addForm=(t,w,btn)=>w?form(t,(CFG[t].x?CFG[t].x():[]).concat(CFG[t].f(false)),btn):"";
+function say(t,good){const m=$("msg");m.textContent=t||"";m.className=good?"good":"";m.hidden=!t;if(good)setTimeout(()=>{if(m.textContent===t)m.hidden=true},2500)}
+const ok=r=>{if(r.error){say(r.error.code==="23503"?"This record is linked to other files (for example requests or health records), so it can’t be deleted yet. Remove those first.":r.error.message);return false}if(r.data&&!r.data.length){say("Not allowed, or the record no longer exists.");return false}say("");return true};
+function pre(t,o){const x={...o};["birthdate","sector","status","notes"].forEach(k=>{if(k in x&&x[k]==="")x[k]=null});if("amount" in x)x.amount=+x.amount;return x}
 
 const V={
 async users(){
- const [{data:u,error}]=await Promise.all([sb.from("user_overview").select("*").order("full_name")]);
+ const {data:u,error}=await sb.from("user_overview").select("*").order("full_name");
  if(error)return say(error.message),"";
- const rows=(u||[]).map(x=>[x.full_name||"(no name)",x.email,{h:'<select data-role="'+x.id+'">'+['','captain','secretary','treasurer','bhw'].map(r=>'<option value="'+r+'"'+(x.role===r||(!x.role&&r==='')?' selected':'')+'>'+(r?LABEL[r]:'No role')+'</option>').join('')+'</select>'},{h:'<input type="checkbox" data-act="'+x.id+'" '+(x.is_active?'checked':'')+' aria-label="Active">'},when(x.last_sign_in_at),{h:'<button class="btn" data-save="'+x.id+'">Save</button>'}]);
- return '<div class="grid"><div class="stat"><b>'+(u||[]).filter(x=>x.is_active).length+'</b><span>Active accounts</span></div><div class="stat"><b>'+(u||[]).filter(x=>!x.is_active).length+'</b><span>Waiting or deactivated</span></div></div><div class="panel"><h2>Who is in the database</h2>'+tbl(["Name","Email","Role","Active","Last sign-in",""],rows)+'<p class="note">New accounts stay locked until you give them a role and tick Active.</p></div>'},
+ const rows=(u||[]).map(x=>[x.full_name||"(no name)",x.email,{h:'<select data-role="'+x.id+'">'+['','captain','secretary','treasurer','bhw'].map(r=>'<option value="'+r+'"'+((x.role||"")===r?' selected':'')+'>'+(r?LABEL[r]:'No role')+'</option>').join('')+'</select>'},{h:'<input type="checkbox" data-act="'+x.id+'" '+(x.is_active?'checked':'')+' aria-label="Active">'},when(x.last_sign_in_at),{h:'<button class="btn" data-save="'+x.id+'">Save</button>'}]);
+ return '<div class="grid"><div class="stat"><b>'+(u||[]).filter(x=>x.is_active).length+'</b><span>Active accounts</span></div><div class="stat"><b>'+(u||[]).filter(x=>!x.is_active).length+'</b><span>Waiting or deactivated</span></div></div><div class="panel"><h2>Who is in the database</h2>'+tbl(["Name","Email","Role","Active","Last sign-in",""],rows)+'<p class="note">New accounts stay locked until you give them a role and tick Active. To remove someone’s access, untick Active.</p></div>'},
 async audit(){
- const {data,error}=await sb.from("audit_log").select("*").order("created_at",{ascending:false}).limit(60);
+ const {data,error}=await sb.from("audit_log").select("*").order("created_at",{ascending:false}).limit(80);
  if(error)return say(error.message),"";
  return '<div class="panel"><h2>Activity log</h2>'+tbl(["When","Who","Role","Action","File","Detail"],(data||[]).map(l=>[when(l.created_at),l.user_name,LABEL[l.user_role]||"",l.denied?{h:'<span class="bad">DENIED</span>'}:l.action,l.table_name||"",l.detail||""]))+'</div>'},
 async records(){
  const w=me.role==="secretary";
- const [r,q,b,p]=await Promise.all([sb.from("residents").select("id,full_name,birthdate,sex,sector,puroks(name)").order("full_name").limit(100),sb.from("requests").select("id,ref_no,type,status,residents(full_name)").order("requested_at",{ascending:false}).limit(50),sb.from("blotter").select("case_no,incident,status").limit(30),sb.from("puroks").select("id,name").order("name")]);
- const pu=(p.data||[]).map(x=>[x.id,x.name]),re=(r.data||[]).map(x=>[x.id,x.full_name]);
- return '<div class="grid"><div class="stat"><b>'+(r.data||[]).length+'</b><span>Residents listed</span></div><div class="stat"><b>'+(q.data||[]).filter(x=>x.status!=="released").length+'</b><span>Open requests</span></div></div>'+
- '<div class="panel"><h2>Residents</h2>'+(w?form("resident",[["full_name","Full name","text"],["birthdate","Birthdate","date","opt"],["sex","Sex","select",[["M","Male"],["F","Female"]]],["purok_id","Purok","select",pu],["sector","Sector (optional)","text","opt"]],"Add resident"):"")+tbl(["Name","Birthdate","Sex","Purok","Sector"],(r.data||[]).map(x=>[x.full_name,x.birthdate,x.sex,x.puroks?.name,x.sector]))+'</div>'+
- '<div class="panel"><h2>Certificate requests</h2>'+(w&&re.length?form("request",[["resident_id","Resident","select",re],["type","Type","select",[["Barangay clearance","Barangay clearance"],["Certificate of indigency","Certificate of indigency"],["Certificate of residency","Certificate of residency"],["Business clearance","Business clearance"]]]],"New request"):"")+tbl(["Ref","Resident","Request","Status",""],(q.data||[]).map(x=>[x.ref_no,x.residents?.full_name,x.type,x.status,w&&NEXT[x.status]?{h:'<button class="btn" data-adv="'+x.id+'" data-to="'+NEXT[x.status]+'">Mark '+NEXT[x.status]+'</button>'}:""]))+'</div>'+
- '<div class="panel"><h2>Blotter</h2>'+tbl(["Case","Incident","Status"],(b.data||[]).map(x=>[x.case_no,x.incident,x.status]))+'</div>'},
+ const [r,q,b,p]=await Promise.all([sb.from("residents").select("id,full_name,birthdate,sex,sector,purok_id,puroks(name)").order("full_name").limit(300),sb.from("requests").select("id,ref_no,type,status,residents(full_name)").order("requested_at",{ascending:false}).limit(60),sb.from("blotter").select("id,case_no,incident,status").limit(40),sb.from("puroks").select("id,name").order("name")]);
+ PU=(p.data||[]).map(x=>[x.id,x.name]);RES=(r.data||[]).map(x=>[x.id,x.full_name]);
+ keep("residents",r.data);keep("requests",q.data);keep("blotter",b.data);
+ return '<div class="grid"><div class="stat"><b>'+(r.data||[]).length+'</b><span>Residents listed</span></div><div class="stat"><b>'+(q.data||[]).filter(x=>x.status!=="released").length+'</b><span>Open requests</span></div><div class="stat"><b>'+(b.data||[]).filter(x=>x.status==="open").length+'</b><span>Open blotter cases</span></div></div>'+
+ '<div class="panel"><h2>Residents</h2>'+addForm("residents",w,"Add resident")+'<input class="search" data-filter="rb" placeholder="Search residents…" aria-label="Search residents">'+tbl(["Name","Birthdate","Sex","Purok","Sector",""],(r.data||[]).map(x=>[x.full_name,x.birthdate,x.sex,x.puroks?.name,x.sector,{h:act("residents",x.id,w)}]),"rb")+'</div>'+
+ '<div class="panel"><h2>Certificate requests</h2>'+(RES.length?addForm("requests",w,"New request"):"")+tbl(["Ref","Resident","Request","Status",""],(q.data||[]).map(x=>[x.ref_no,x.residents?.full_name,x.type,chip(x.status),{h:(w&&NEXT[x.status]?'<button class="ic" data-adv="'+x.id+'" data-to="'+NEXT[x.status]+'">Mark '+NEXT[x.status]+'</button>':"")+act("requests",x.id,w)}]))+'</div>'+
+ '<div class="panel"><h2>Blotter</h2>'+addForm("blotter",w,"Add case")+tbl(["Case","Incident","Status",""],(b.data||[]).map(x=>[x.case_no,x.incident,x.status,{h:act("blotter",x.id,w)}]))+'</div>'},
 async finance(){
  const w=me.role==="treasurer";
- const [p,e]=await Promise.all([sb.from("payments").select("*").order("paid_at",{ascending:false}).limit(60),sb.from("expenses").select("*").order("spent_at",{ascending:false}).limit(60)]);
+ const [p,e]=await Promise.all([sb.from("payments").select("*").order("paid_at",{ascending:false}).limit(80),sb.from("expenses").select("*").order("spent_at",{ascending:false}).limit(80)]);
+ keep("payments",p.data);keep("expenses",e.data);
  const tp=(p.data||[]).reduce((s,x)=>s+ +x.amount,0),te=(e.data||[]).reduce((s,x)=>s+ +x.amount,0);
  return '<div class="grid"><div class="stat"><b>'+peso(tp)+'</b><span>Collected (shown)</span></div><div class="stat"><b>'+peso(te)+'</b><span>Spent (shown)</span></div><div class="stat"><b>'+peso(tp-te)+'</b><span>Balance</span></div></div>'+
- '<div class="panel"><h2>Official receipts</h2>'+(w?form("payment",[["or_no","OR no.","text"],["payer_name","Payer","text"],["item","Item","text"],["amount","Amount","number"]],"Add receipt"):"")+tbl(["OR no.","Payer","Item","Amount","Date"],(p.data||[]).map(x=>[x.or_no,x.payer_name,x.item,peso(x.amount),when(x.paid_at)]))+'</div>'+
- '<div class="panel"><h2>Expenses</h2>'+(w?form("expense",[["description","Description","text"],["amount","Amount","number"]],"Add expense"):"")+tbl(["Date","Description","Amount"],(e.data||[]).map(x=>[x.spent_at,x.description,peso(x.amount)]))+'</div>'},
+ '<div class="panel"><h2>Official receipts</h2>'+addForm("payments",w,"Add receipt")+tbl(["OR no.","Payer","Item","Amount","Date",""],(p.data||[]).map(x=>[x.or_no,x.payer_name,x.item,peso(x.amount),when(x.paid_at),{h:act("payments",x.id,w)}]))+'</div>'+
+ '<div class="panel"><h2>Expenses</h2>'+addForm("expenses",w,"Add expense")+tbl(["Date","Description","Amount",""],(e.data||[]).map(x=>[x.spent_at,x.description,peso(x.amount),{h:act("expenses",x.id,w)}]))+'</div>'},
 async health(){
  const w=me.role==="bhw";
- const [h,r]=await Promise.all([sb.from("health_records").select("*").order("visit_date",{ascending:false}).limit(80),sb.from("residents_basic").select("id,full_name").order("full_name").limit(500)]);
- const nm=Object.fromEntries((r.data||[]).map(x=>[x.id,x.full_name]));
- return '<div class="panel"><h2>Health files</h2>'+(w&&(r.data||[]).length?form("health",[["resident_id","Resident","select",(r.data||[]).map(x=>[x.id,x.full_name])],["program","Program","select",[["Immunization","Immunization"],["Prenatal","Prenatal"],["Senior check-up","Senior check-up"],["Nutrition","Nutrition"],["Family planning","Family planning"]]],["status","Status","text","opt"],["notes","Notes","text","opt"]],"Add record"):"")+tbl(["Name","Program","Visit","Status","Notes"],(h.data||[]).map(x=>[nm[x.resident_id]||"",x.program,x.visit_date,x.status,x.notes]))+'<p class="note">Medical details are visible only to the BHW and the Punong Barangay.</p></div>'}
+ const [h,r]=await Promise.all([sb.from("health_records").select("*").order("visit_date",{ascending:false}).limit(100),sb.from("residents_basic").select("id,full_name").order("full_name").limit(500)]);
+ RES=(r.data||[]).map(x=>[x.id,x.full_name]);keep("health_records",h.data);
+ const nm=Object.fromEntries(RES);
+ return '<div class="panel"><h2>Health files</h2>'+(RES.length?addForm("health_records",w,"Add record"):"")+tbl(["Name","Program","Visit","Status","Notes",""],(h.data||[]).map(x=>[nm[x.resident_id]||"",x.program,x.visit_date,x.status,x.notes,{h:act("health_records",x.id,w)}]))+'<p class="note">Medical details are visible only to the BHW and the Punong Barangay.</p></div>'}
 };
 
 function tabsFor(r){return r==="captain"?["users","audit","records","finance","health"]:[{secretary:"records",treasurer:"finance",bhw:"health"}[r]]}
 async function draw(){
- $("who").innerHTML='<div style="text-align:right;font-size:.88rem">'+esc(me.full_name)+'<br>'+LABEL[me.role]+'</div><button class="btn alt" id="out" style="margin-top:6px">Sign out</button>';
+ $("who").innerHTML='<div class="me"><b>'+esc(me.full_name)+'</b>'+LABEL[me.role]+'</div><button class="btn ghost" id="out" style="margin-top:6px;float:right">Sign out</button>';
  $("nav").innerHTML=tabsFor(me.role).map(t=>'<button role="tab" data-t="'+t+'" aria-selected="'+(t===tab)+'">'+MODS[t]+'</button>').join('');
- $("view").innerHTML='<p class="note" style="margin-top:14px">Loading…</p>';
+ $("view").innerHTML='<p class="note" style="margin-top:16px">Loading…</p>';
  $("view").innerHTML=await V[tab]();
 }
 function loginScreen(){
@@ -118,7 +146,6 @@ function loginScreen(){
  $("view").innerHTML='<div class="panel login"><h2>Staff sign-in</h2><p class="note">Use the account the Punong Barangay created for you.</p><form class="frm" data-f="login"><label>Email<input name="email" type="email" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button class="btn">Sign in</button></form></div>';
 }
 async function boot(){
- if(SB_URL.includes("YOUR-PROJECT-ID")){say("Setup needed: open index.html and paste your Supabse Project URL into SB_URL.".replace("Supabse","Supabase"));return loginScreen()}
  const {data:{session}}=await sb.auth.getSession();
  if(!session)return loginScreen();
  const {data:p}=await sb.from("profiles").select("*").eq("id",session.user.id).single();
@@ -126,20 +153,36 @@ async function boot(){
   $("view").innerHTML='<div class="panel login"><h2>Waiting for approval</h2><p>Your account is not active yet. Ask the Punong Barangay to give you a role.</p><button class="btn" id="out">Sign out</button></div>';return}
  me=p;tab=tabsFor(p.role)[0];draw();
 }
+const dlg=$("dlg");
+function openEdit(t,id){
+ const row=ROWS[t][id];if(!row)return;
+ dlg.innerHTML='<h2>Edit '+CFG[t].n+'</h2><form class="frm one" data-f="edit|'+t+'|'+id+'">'+CFG[t].f(true).map(f=>fld(f,row[f[0]])).join('')+'<div class="acts"><button class="btn">Save changes</button><button type="button" class="btn ghost" data-close>Cancel</button></div></form>';dlg.showModal()}
+function openDel(t,id){
+ const r=ROWS[t][id]||{},name=r.full_name||r.ref_no||r.case_no||r.or_no||r.description||r.program||"this record";
+ dlg.innerHTML='<h2>Delete '+CFG[t].n+'?</h2><p>“'+esc(name)+'” will be removed. This action is recorded in the activity log and can’t be undone.</p><form class="frm one" data-f="del|'+t+'|'+id+'"><div class="acts"><button class="btn danger">Yes, delete</button><button type="button" class="btn ghost" data-close>Cancel</button></div></form>';dlg.showModal()}
 document.addEventListener("submit",async e=>{
  e.preventDefault();const f=e.target,n=f.dataset.f,o=Object.fromEntries(new FormData(f));
  if(n==="login"){const r=await sb.auth.signInWithPassword({email:o.email,password:o.password});if(r.error)return say("Sign-in failed. Check your email and password.");say("");await boot();sb.rpc("log_event",{p_action:"SIGN_IN"});return}
- if(H[n]&&ok(await H[n](o)))draw();
+ const [m,t,id]=n.split("|");
+ if(m==="edit"){if(ok(await sb.from(t).update(pre(t,o)).eq("id",id).select())){dlg.close();say("Changes saved.",1);draw()}return}
+ if(m==="del"){if(ok(await sb.from(t).delete().eq("id",id).select())){dlg.close();say("Deleted.",1);draw()}else dlg.close();return}
+ if(m==="requests")o.ref_no="REQ-"+new Date().toISOString().slice(2,7).replace("-","")+"-"+Math.floor(100+Math.random()*900);
+ if(ok(await sb.from(m).insert(pre(m,o)).select())){say("Added.",1);draw()}
 });
+document.addEventListener("input",e=>{const k=e.target.dataset.filter;if(!k)return;const q=e.target.value.toLowerCase();document.querySelectorAll("#"+k+" tr").forEach(r=>{r.hidden=!r.textContent.toLowerCase().includes(q)})});
 document.addEventListener("click",async e=>{
  const b=e.target.closest("button");if(!b)return;
+ if("close" in b.dataset)return dlg.close();
+ if(b.dataset.edit)return openEdit(...b.dataset.edit.split("|"));
+ if(b.dataset.del)return openDel(...b.dataset.del.split("|"));
  if(b.id==="out"){await sb.rpc("log_event",{p_action:"SIGN_OUT"});await sb.auth.signOut();say("");return loginScreen()}
  if(b.dataset.t){tab=b.dataset.t;say("");sb.rpc("log_event",{p_action:"VIEW",p_detail:MODS[tab]});return draw()}
- if(b.dataset.adv){if(ok(await sb.from("requests").update({status:b.dataset.to}).eq("id",b.dataset.adv)))draw();return}
- if(b.dataset.save){const id=b.dataset.save,role=document.querySelector('[data-role="'+id+'"]').value||null,act=document.querySelector('[data-act="'+id+'"]').checked;
-  if(act&&!role)return say("Choose a role before activating this account.");
-  if(ok(await sb.from("profiles").update({role,is_active:act}).eq("id",id))){sb.rpc("log_event",{p_action:"ROLE_CHANGE",p_detail:"Account "+id+" set to "+(role||"none")+(act?", active":", inactive")});draw()}}
+ if(b.dataset.adv){if(ok(await sb.from("requests").update({status:b.dataset.to}).eq("id",b.dataset.adv).select()))draw();return}
+ if(b.dataset.save){const id=b.dataset.save,role=document.querySelector('[data-role="'+id+'"]').value||null,a=document.querySelector('[data-act="'+id+'"]').checked;
+  if(a&&!role)return say("Choose a role before activating this account.");
+  if(ok(await sb.from("profiles").update({role,is_active:a}).eq("id",id).select())){sb.rpc("log_event",{p_action:"ROLE_CHANGE",p_detail:"Account "+id+" set to "+(role||"none")+(a?", active":", inactive")});say("Account saved.",1);draw()}}
 });
+dlg.addEventListener("click",e=>{if(e.target===dlg)dlg.close()});
 sb.auth.onAuthStateChange(ev=>{if(ev==="SIGNED_OUT")loginScreen()});
 boot();
 </script>
