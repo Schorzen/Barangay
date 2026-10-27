@@ -3,133 +3,145 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Barangay Talisay – Access-controlled records</title>
+<title>Barangay Talisay Records System</title>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
-:root{--bg:#EDF1F4;--surface:#fff;--ink:#16263B;--mute:#5C6B7D;--line:#D5DDE5;--navy:#1F3A5F;--sun:#F2B632;--coral:#C8452D;--teal:#1E8A7A;
-box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0F1824;--surface:#17263A;--ink:#E8EEF5;--mute:#93A3B8;--line:#2A3D55;--navy:#2B4F7E;--coral:#E8715A;--teal:#46B8A6}}
-:root[data-theme="dark"]{--bg:#0F1824;--surface:#17263A;--ink:#E8EEF5;--mute:#93A3B8;--line:#2A3D55;--navy:#2B4F7E;--coral:#E8715A;--teal:#46B8A6}
-html{scroll-padding-top:env(safe-area-inset-top,0px)}
+:root{--bg:#EDF1F4;--surface:#fff;--ink:#16263B;--mute:#5C6B7D;--line:#D5DDE5;--navy:#1F3A5F;--sun:#F2B632;--coral:#C8452D;--teal:#1E8A7A}
+@media (prefers-color-scheme:dark){:root{--bg:#0F1824;--surface:#17263A;--ink:#E8EEF5;--mute:#93A3B8;--line:#2A3D55;--navy:#2B4F7E;--coral:#E8715A;--teal:#46B8A6}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 "Source Sans 3",system-ui,sans-serif}
-h1,h2,h3{font-family:"Bricolage Grotesque",system-ui,sans-serif;margin:0;line-height:1.15}
-header{background:var(--navy);color:#fff;padding:16px 16px 0}
-header h1{font-size:1.45rem}
-header p{margin:3px 0 12px;opacity:.8;font-size:.9rem}
-.who{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
-.who button{font:600 .88rem "Source Sans 3",sans-serif;background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:99px;padding:6px 13px;cursor:pointer}
-.who button[aria-pressed=true]{background:var(--sun);color:#16263B;border-color:var(--sun)}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:400 16px/1.5 "Source Sans 3",system-ui,sans-serif;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+h1,h2{font-family:"Bricolage Grotesque",system-ui,sans-serif;margin:0;line-height:1.15}
+header{background:var(--navy);color:#fff;padding:14px 16px 0}
+.top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+header h1{font-size:1.4rem}header p{margin:2px 0 10px;opacity:.8;font-size:.88rem}
 nav{display:flex;gap:2px;overflow-x:auto}
-nav button{flex:none;background:none;border:0;color:inherit;opacity:.72;font:600 .93rem "Source Sans 3",sans-serif;padding:10px 12px;border-bottom:3px solid transparent;cursor:pointer}
+nav button{flex:none;background:none;border:0;color:#fff;opacity:.72;font:600 .93rem "Source Sans 3",sans-serif;padding:10px 12px;border-bottom:3px solid transparent;cursor:pointer}
 nav button[aria-selected=true]{opacity:1;border-color:var(--sun)}
-button:focus-visible,input:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
-main{max-width:980px;margin:0 auto;padding:14px 16px 28px}
-.me{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:10px 14px;margin-bottom:12px;font-size:.93rem}
-.me b{font-family:"Bricolage Grotesque",sans-serif}
-.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(145px,1fr))}
-.stat{background:var(--surface);border-left:5px solid var(--navy);padding:11px 14px;border-radius:4px}
-.stat b{display:block;font:700 1.75rem "Bricolage Grotesque",sans-serif}
-.stat span{color:var(--mute);font-size:.88rem}
-.stat.w{border-color:var(--coral)}.stat.o{border-color:var(--teal)}.stat.s{border-color:var(--sun)}
+main{max-width:980px;margin:0 auto;padding:14px 16px 30px}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:15px;margin-top:12px}
 .panel h2{font-size:1.1rem;margin-bottom:9px}
-.scroll{overflow-x:auto}
-table{width:100%;border-collapse:collapse;font-size:.91rem}
-th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
-th{color:var(--mute);font-weight:600}
-.tag{display:inline-block;padding:2px 9px;border-radius:99px;font-size:.8rem;font-weight:600;background:#E3E7EB;color:#33414F}
-.on{background:#D3EFE9;color:#0E5A4E}.off{background:#FBE3E0;color:#8A2B1B}.due{background:#FBE3A6;color:#5A4208}
-.btn{font:600 .83rem "Source Sans 3",sans-serif;background:var(--navy);color:#fff;border:0;border-radius:4px;padding:6px 11px;cursor:pointer}
-.lock{text-align:center;padding:34px 12px}
-.lock h2{color:var(--coral);margin-bottom:6px}
-.log{list-style:none;margin:0;padding:0;font-size:.92rem}
-.log li{display:grid;grid-template-columns:64px 1fr;gap:8px;padding:7px 0;border-bottom:1px solid var(--line)}
-.log time{color:var(--mute)}
-.log .bad{color:var(--coral);font-weight:600}
-.bar{display:grid;grid-template-columns:120px 1fr 70px;gap:8px;align-items:center;margin:7px 0;font-size:.92rem}
-.bar i{display:block;height:14px;background:var(--navy);border-radius:2px}
-.bar em{font-style:normal;text-align:right;color:var(--mute)}
-.note{color:var(--mute);font-size:.85rem;margin-top:8px}
-.y{color:var(--teal);font-weight:700}.n{color:var(--mute)}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(145px,1fr))}
+.stat{background:var(--surface);border-left:5px solid var(--navy);padding:11px 14px;border-radius:4px}
+.stat b{display:block;font:700 1.6rem "Bricolage Grotesque",sans-serif}.stat span{color:var(--mute);font-size:.88rem}
+.scroll{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:.91rem}
+th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}th{color:var(--mute);font-weight:600}
+.btn{font:600 .85rem "Source Sans 3",sans-serif;background:var(--navy);color:#fff;border:0;border-radius:4px;padding:8px 13px;cursor:pointer}
+.btn.alt{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.4)}
+.btn:focus-visible,input:focus-visible,select:focus-visible,nav button:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+.frm{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));align-items:end;margin-bottom:12px}
+label{font-size:.82rem;color:var(--mute);display:grid;gap:3px}
+input,select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink);min-width:0;width:100%}
+.login{max-width:380px;margin:40px auto}.login .frm{grid-template-columns:1fr}
+#msg{margin:12px 0 0;padding:9px 12px;border-radius:4px;background:#FBE3E0;color:#8A2B1B;font-size:.92rem}
+.note{color:var(--mute);font-size:.85rem}.bad{color:var(--coral);font-weight:600}
 </style>
 </head>
 <body>
 <header>
-  <h1>Barangay Talisay</h1>
-  <p>Santa Fe, Cebu · Sample records system, all names and figures are made up</p>
-  <div class="who" id="who" role="group" aria-label="Sign in as"></div>
+  <div class="top"><div><h1>Barangay Talisay</h1><p>Santa Fe, Cebu · Records System</p></div><div id="who"></div></div>
   <nav id="nav" role="tablist"></nav>
 </header>
-<main>
-  <div class="me" id="me"></div>
-  <div id="view"></div>
-</main>
+<main><div id="msg" hidden></div><div id="view"></div></main>
 <script>
-var ROLES={
- captain:{label:"Punong Barangay",name:"Roberto Alcoseba",mods:["users","health","finance","records","rules"]},
- secretary:{label:"Secretary",name:"Marites Gonzaga",mods:["records","rules"]},
- treasurer:{label:"Treasurer",name:"Elena Pacaña",mods:["finance","rules"]},
- bhw:{label:"BHW",name:"Lourdes Ouano",mods:["health","rules"]}};
-var MODS={users:"Users and activity",health:"Health files",finance:"Finance files",records:"Records and certificates",rules:"Access rules"};
-var USERS=[["Roberto Alcoseba","captain","Oct 26, 8:02 AM","Reviewed monthly report",1],["Marites Gonzaga","secretary","Oct 26, 8:15 AM","Approved clearance BC-2610-041",1],["Elena Pacaña","treasurer","Oct 25, 4:40 PM","Issued OR-1043",1],["Lourdes Ouano","bhw","Oct 25, 11:20 AM","Updated immunization list",1]];
-var LOG=[["8:15","Marites Gonzaga (Secretary) opened Records"],["8:02","Roberto Alcoseba (Punong Barangay) signed in"],["Oct 25","Elena Pacaña (Treasurer) issued OR-1043"],["Oct 25","Lourdes Ouano (BHW) updated immunization list"]];
-var cur="captain",tab="users";
-function $(i){return document.getElementById(i)}
-function tbl(h,r){return '<div class="scroll"><table><thead><tr>'+h.map(function(x){return'<th>'+x+'</th>'}).join('')+'</tr></thead><tbody>'+r.map(function(x){return'<tr>'+x.map(function(c){return'<td>'+c+'</td>'}).join('')+'</tr>'}).join('')+'</tbody></table></div>'}
-function stats(a){return '<div class="grid">'+a.map(function(s){return'<div class="stat '+(s[2]||'')+'"><b>'+s[0]+'</b><span>'+s[1]+'</span></div>'}).join('')+'</div>'}
-function now(){return new Date().toLocaleTimeString([], {hour:"numeric",minute:"2-digit"})}
-function log(t,bad){LOG.unshift([now(),t,bad])}
-function who(){var r=ROLES[cur];return r.name+" ("+r.label+")"}
+// === SETTINGS: paste your Supabase Project URL below ===
+const SB_URL="https://iloftktissjnikmyedfj.supabase.co";
+const SB_KEY="sb_publishable_nyThP0h3QcRKGlRiqMinaQ_yNKI2Ej4";
+// =======================================================
+const sb=supabase.createClient(SB_URL,SB_KEY);
+const $=i=>document.getElementById(i);
+const LABEL={captain:"Punong Barangay",secretary:"Secretary",treasurer:"Treasurer",bhw:"BHW"};
+const MODS={users:"Users",audit:"Activity log",records:"Records",finance:"Finance",health:"Health"};
+const OWN={records:"secretary",finance:"treasurer",health:"bhw"};
+const NEXT={received:"verified",verified:"approved",approved:"released"};
+let me=null,tab=null;
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const cell=c=>c&&c.h!==undefined?c.h:esc(c);
+const tbl=(h,r)=>'<div class="scroll"><table><thead><tr>'+h.map(x=>'<th>'+x+'</th>').join('')+'</tr></thead><tbody>'+(r.length?r.map(x=>'<tr>'+x.map(c=>'<td>'+cell(c)+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="'+h.length+'">Nothing here yet.</td></tr>')+'</tbody></table></div>';
+const when=t=>t?new Date(t).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):"Never";
+const peso=n=>"₱"+Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+const opts=a=>a.map(o=>'<option value="'+esc(o[0])+'">'+esc(o[1])+'</option>').join('');
+function form(name,fields,btn){return '<form class="frm" data-f="'+name+'">'+fields.map(f=>'<label>'+f[1]+(f[2]==="select"?'<select name="'+f[0]+'" required>'+opts(f[3])+'</select>':'<input name="'+f[0]+'" type="'+f[2]+'"'+(f[2]==="number"?' step="0.01" min="0"':'')+(f[3]==="opt"?'':' required')+'>')+'</label>').join('')+'<button class="btn">'+btn+'</button></form>'}
+function say(t){const m=$("msg");m.textContent=t||"";m.hidden=!t}
+const ok=r=>{if(r.error){say(r.error.message);return false}say("");return true};
 
-var V={
-users:function(){
- return stats([[USERS.filter(function(u){return u[4]}).length,"Active accounts","o"],[USERS.length,"Total accounts"],[LOG.filter(function(l){return l[2]}).length,"Denied attempts","w"]])+
- '<div class="panel"><h2>Who has access to the database</h2>'+tbl(["Name","Role","Status","Last sign-in","Last action",""],USERS.map(function(u,i){
-  return [u[0],ROLES[u[1]].label,'<span class="tag '+(u[4]?'on':'off')+'">'+(u[4]?'Active':'Deactivated')+'</span>',u[2],u[3],u[1]==="captain"?"":'<button class="btn" data-u="'+i+'">'+(u[4]?"Deactivate":"Reactivate")+'</button>']}))+
- '</div><div class="panel"><h2>Activity log</h2><ul class="log">'+LOG.map(function(l){return'<li><time>'+l[0]+'</time><span class="'+(l[2]?'bad':'')+'">'+l[1]+'</span></li>'}).join('')+'</ul></div>'},
-health:function(){
- return stats([["187","Children 0–5 monitored","o"],["23","Pregnant women","s"],["31","Due for immunization","w"],["412","Senior citizens"]])+
- '<div class="panel"><h2>Patient and program files</h2>'+tbl(["Name","Purok","Program","Last visit","Status"],[
- ["Baby Jhon Villaruz","Purok 2","Immunization","Oct 21",'<span class="tag due">Due: MMR</span>'],
- ["Analyn Cabahug","Purok 4","Prenatal","Oct 22",'<span class="tag on">On schedule</span>'],
- ["Lolo Ernesto Booc","Purok 1","Senior check-up","Oct 19",'<span class="tag on">Done</span>'],
- ["Baby Mia Tumulak","Purok 3","Nutrition (weighing)","Oct 18",'<span class="tag due">Underweight</span>'],
- ["Rosalie Sabellona","Purok 5","Family planning","Oct 15",'<span class="tag on">Done</span>']])+
- '<p class="note">Medical details stay here. Finance and records staff cannot open these files.</p></div>'},
-finance:function(){
- var s=[["Business clearances",11200],["Barangay clearances",6450],["Hall rental",3500],["Other fees",1150]];
- return stats([["₱22,300","Collected this month","o"],["₱14,820","Spent this month","w"],["₱7,480","Balance","s"]])+
- '<div class="panel"><h2>Collections by source</h2>'+s.map(function(x){return'<div class="bar"><span>'+x[0]+'</span><i style="width:'+x[1]/120+'%"></i><em>₱'+x[1].toLocaleString()+'</em></div>'}).join('')+'</div>'+
- '<div class="panel"><h2>Official receipts</h2>'+tbl(["OR no.","Payer","Item","Amount","Date"],[
- ["OR-1041","Maria Cabahug","Barangay clearance","₱50","Oct 26"],["OR-1042","J. Tumulak","Business clearance","₱300","Oct 26"],["OR-1043","R. Booc","Certificate of residency","₱30","Oct 25"],["OR-1044","L. Sabellona","Hall rental","₱500","Oct 24"]])+'</div>'},
-records:function(){
- return stats([["4,312","Residents"],["986","Households"],["2,874","Registered voters","s"],["6","Open requests","w"]])+
- '<div class="panel"><h2>Resident registry</h2>'+tbl(["ID","Name","Age","Purok","Sector"],[
- ["R-0001","Maria Cabahug",34,"Purok 1","Solo parent"],["R-0002","Jose Booc",67,"Purok 3","Senior citizen"],["R-0003","Ana Villaruz",22,"Purok 2","None"],["R-0004","Ramon Tumulak",45,"Purok 4","PWD"],["R-0005","Liza Sabellona",29,"Purok 3","4Ps"]])+'</div>'+
- '<div class="panel"><h2>Certificate requests</h2>'+tbl(["Ref","Resident","Request","Status"],[
- ["BC-2610-041","Maria Cabahug","Barangay clearance",'<span class="tag due">Received</span>'],["BC-2610-042","Jose Booc","Certificate of indigency",'<span class="tag">Verified</span>'],["BC-2610-043","Ana Villaruz","Certificate of residency",'<span class="tag on">Approved</span>']])+'</div>'+
- '<div class="panel"><h2>Blotter</h2>'+tbl(["Case","Incident","Status"],[["BL-118","Noise complaint, Purok 4","Mediation"],["BL-119","Boundary dispute, Purok 2","Open"]])+'</div>'},
-rules:function(){
- var rows=Object.keys(MODS).filter(function(k){return k!=="rules"}).map(function(m){
-  return [MODS[m]].concat(Object.keys(ROLES).map(function(r){return ROLES[r].mods.indexOf(m)>-1?'<span class="y">Yes</span>':'<span class="n">No</span>'}))});
- return '<div class="panel"><h2>Who can open what</h2>'+tbl(["Files"].concat(Object.keys(ROLES).map(function(r){return ROLES[r].label})),rows)+
- '<p class="note">The Punong Barangay can open every file and sees every account and sign-in. Each denied attempt is written to the activity log.</p></div>'+
- '<div class="panel"><h2>How access is checked</h2>'+tbl(["Step","What happens"],[["1","Staff signs in with a personal account"],["2","The system reads the account’s role"],["3","Only the folders for that role are opened; others show “Restricted”"],["4","Every sign-in, view and denied attempt is logged"],["5","The Punong Barangay reviews the log and can deactivate an account"]])+'</div>'}
+const H={
+ resident:o=>sb.from("residents").insert({full_name:o.full_name,birthdate:o.birthdate||null,sex:o.sex,purok_id:o.purok_id,sector:o.sector||null}),
+ request:o=>sb.from("requests").insert({ref_no:"REQ-"+new Date().toISOString().slice(2,7).replace("-","")+"-"+Math.floor(100+Math.random()*900),resident_id:o.resident_id,type:o.type}),
+ payment:o=>sb.from("payments").insert({or_no:o.or_no,payer_name:o.payer_name,item:o.item,amount:+o.amount}),
+ expense:o=>sb.from("expenses").insert({description:o.description,amount:+o.amount}),
+ health:o=>sb.from("health_records").insert({resident_id:o.resident_id,program:o.program,status:o.status||null,notes:o.notes||null})
 };
 
-function draw(){
- var r=ROLES[cur];
- $("who").innerHTML=Object.keys(ROLES).map(function(k){return'<button data-r="'+k+'" aria-pressed="'+(k===cur)+'">'+ROLES[k].label+'</button>'}).join('');
- $("nav").innerHTML=Object.keys(MODS).map(function(m){var ok=r.mods.indexOf(m)>-1;return'<button role="tab" data-t="'+m+'" aria-selected="'+(m===tab)+'">'+(ok?'':'🔒 ')+MODS[m]+'</button>'}).join('');
- $("me").innerHTML='Signed in as <b>'+r.name+'</b>, '+r.label+(cur==="captain"?'. You can open every file.':'. You can open only: '+r.mods.filter(function(m){return m!=="rules"}).map(function(m){return MODS[m]}).join(", ")+'.');
- $("view").innerHTML=r.mods.indexOf(tab)>-1?V[tab]():'<div class="panel lock"><h2>Restricted</h2><p>'+MODS[tab]+' are not part of the '+r.label+' role. This attempt was recorded for the Punong Barangay.</p></div>';
+const V={
+async users(){
+ const [{data:u,error}]=await Promise.all([sb.from("user_overview").select("*").order("full_name")]);
+ if(error)return say(error.message),"";
+ const rows=(u||[]).map(x=>[x.full_name||"(no name)",x.email,{h:'<select data-role="'+x.id+'">'+['','captain','secretary','treasurer','bhw'].map(r=>'<option value="'+r+'"'+(x.role===r||(!x.role&&r==='')?' selected':'')+'>'+(r?LABEL[r]:'No role')+'</option>').join('')+'</select>'},{h:'<input type="checkbox" data-act="'+x.id+'" '+(x.is_active?'checked':'')+' aria-label="Active">'},when(x.last_sign_in_at),{h:'<button class="btn" data-save="'+x.id+'">Save</button>'}]);
+ return '<div class="grid"><div class="stat"><b>'+(u||[]).filter(x=>x.is_active).length+'</b><span>Active accounts</span></div><div class="stat"><b>'+(u||[]).filter(x=>!x.is_active).length+'</b><span>Waiting or deactivated</span></div></div><div class="panel"><h2>Who is in the database</h2>'+tbl(["Name","Email","Role","Active","Last sign-in",""],rows)+'<p class="note">New accounts stay locked until you give them a role and tick Active.</p></div>'},
+async audit(){
+ const {data,error}=await sb.from("audit_log").select("*").order("created_at",{ascending:false}).limit(60);
+ if(error)return say(error.message),"";
+ return '<div class="panel"><h2>Activity log</h2>'+tbl(["When","Who","Role","Action","File","Detail"],(data||[]).map(l=>[when(l.created_at),l.user_name,LABEL[l.user_role]||"",l.denied?{h:'<span class="bad">DENIED</span>'}:l.action,l.table_name||"",l.detail||""]))+'</div>'},
+async records(){
+ const w=me.role==="secretary";
+ const [r,q,b,p]=await Promise.all([sb.from("residents").select("id,full_name,birthdate,sex,sector,puroks(name)").order("full_name").limit(100),sb.from("requests").select("id,ref_no,type,status,residents(full_name)").order("requested_at",{ascending:false}).limit(50),sb.from("blotter").select("case_no,incident,status").limit(30),sb.from("puroks").select("id,name").order("name")]);
+ const pu=(p.data||[]).map(x=>[x.id,x.name]),re=(r.data||[]).map(x=>[x.id,x.full_name]);
+ return '<div class="grid"><div class="stat"><b>'+(r.data||[]).length+'</b><span>Residents listed</span></div><div class="stat"><b>'+(q.data||[]).filter(x=>x.status!=="released").length+'</b><span>Open requests</span></div></div>'+
+ '<div class="panel"><h2>Residents</h2>'+(w?form("resident",[["full_name","Full name","text"],["birthdate","Birthdate","date","opt"],["sex","Sex","select",[["M","Male"],["F","Female"]]],["purok_id","Purok","select",pu],["sector","Sector (optional)","text","opt"]],"Add resident"):"")+tbl(["Name","Birthdate","Sex","Purok","Sector"],(r.data||[]).map(x=>[x.full_name,x.birthdate,x.sex,x.puroks?.name,x.sector]))+'</div>'+
+ '<div class="panel"><h2>Certificate requests</h2>'+(w&&re.length?form("request",[["resident_id","Resident","select",re],["type","Type","select",[["Barangay clearance","Barangay clearance"],["Certificate of indigency","Certificate of indigency"],["Certificate of residency","Certificate of residency"],["Business clearance","Business clearance"]]]],"New request"):"")+tbl(["Ref","Resident","Request","Status",""],(q.data||[]).map(x=>[x.ref_no,x.residents?.full_name,x.type,x.status,w&&NEXT[x.status]?{h:'<button class="btn" data-adv="'+x.id+'" data-to="'+NEXT[x.status]+'">Mark '+NEXT[x.status]+'</button>'}:""]))+'</div>'+
+ '<div class="panel"><h2>Blotter</h2>'+tbl(["Case","Incident","Status"],(b.data||[]).map(x=>[x.case_no,x.incident,x.status]))+'</div>'},
+async finance(){
+ const w=me.role==="treasurer";
+ const [p,e]=await Promise.all([sb.from("payments").select("*").order("paid_at",{ascending:false}).limit(60),sb.from("expenses").select("*").order("spent_at",{ascending:false}).limit(60)]);
+ const tp=(p.data||[]).reduce((s,x)=>s+ +x.amount,0),te=(e.data||[]).reduce((s,x)=>s+ +x.amount,0);
+ return '<div class="grid"><div class="stat"><b>'+peso(tp)+'</b><span>Collected (shown)</span></div><div class="stat"><b>'+peso(te)+'</b><span>Spent (shown)</span></div><div class="stat"><b>'+peso(tp-te)+'</b><span>Balance</span></div></div>'+
+ '<div class="panel"><h2>Official receipts</h2>'+(w?form("payment",[["or_no","OR no.","text"],["payer_name","Payer","text"],["item","Item","text"],["amount","Amount","number"]],"Add receipt"):"")+tbl(["OR no.","Payer","Item","Amount","Date"],(p.data||[]).map(x=>[x.or_no,x.payer_name,x.item,peso(x.amount),when(x.paid_at)]))+'</div>'+
+ '<div class="panel"><h2>Expenses</h2>'+(w?form("expense",[["description","Description","text"],["amount","Amount","number"]],"Add expense"):"")+tbl(["Date","Description","Amount"],(e.data||[]).map(x=>[x.spent_at,x.description,peso(x.amount)]))+'</div>'},
+async health(){
+ const w=me.role==="bhw";
+ const [h,r]=await Promise.all([sb.from("health_records").select("*").order("visit_date",{ascending:false}).limit(80),sb.from("residents_basic").select("id,full_name").order("full_name").limit(500)]);
+ const nm=Object.fromEntries((r.data||[]).map(x=>[x.id,x.full_name]));
+ return '<div class="panel"><h2>Health files</h2>'+(w&&(r.data||[]).length?form("health",[["resident_id","Resident","select",(r.data||[]).map(x=>[x.id,x.full_name])],["program","Program","select",[["Immunization","Immunization"],["Prenatal","Prenatal"],["Senior check-up","Senior check-up"],["Nutrition","Nutrition"],["Family planning","Family planning"]]],["status","Status","text","opt"],["notes","Notes","text","opt"]],"Add record"):"")+tbl(["Name","Program","Visit","Status","Notes"],(h.data||[]).map(x=>[nm[x.resident_id]||"",x.program,x.visit_date,x.status,x.notes]))+'<p class="note">Medical details are visible only to the BHW and the Punong Barangay.</p></div>'}
+};
+
+function tabsFor(r){return r==="captain"?["users","audit","records","finance","health"]:[{secretary:"records",treasurer:"finance",bhw:"health"}[r]]}
+async function draw(){
+ $("who").innerHTML='<div style="text-align:right;font-size:.88rem">'+esc(me.full_name)+'<br>'+LABEL[me.role]+'</div><button class="btn alt" id="out" style="margin-top:6px">Sign out</button>';
+ $("nav").innerHTML=tabsFor(me.role).map(t=>'<button role="tab" data-t="'+t+'" aria-selected="'+(t===tab)+'">'+MODS[t]+'</button>').join('');
+ $("view").innerHTML='<p class="note" style="margin-top:14px">Loading…</p>';
+ $("view").innerHTML=await V[tab]();
 }
-function go(t){tab=t;if(ROLES[cur].mods.indexOf(t)<0&&t!=="rules")log(who()+" tried to open "+MODS[t]+" (denied)",1);try{history.replaceState(null,"","#"+t)}catch(e){}draw()}
-$("who").onclick=function(e){var b=e.target.closest("button");if(!b)return;cur=b.dataset.r;tab=ROLES[cur].mods[0];log(who()+" signed in");USERS.forEach(function(u){if(u[1]===cur){u[2]="Today, "+now()}});draw()};
-$("nav").onclick=function(e){var b=e.target.closest("button");if(b)go(b.dataset.t)};
-$("view").onclick=function(e){var b=e.target.closest("button[data-u]");if(!b)return;var u=USERS[b.dataset.u];u[4]=u[4]?0:1;log(who()+(u[4]?" reactivated ":" deactivated ")+u[0]);draw()};
-var h=location.hash.slice(1);if(MODS[h])tab=h;draw();
+function loginScreen(){
+ $("who").innerHTML="";$("nav").innerHTML="";me=null;
+ $("view").innerHTML='<div class="panel login"><h2>Staff sign-in</h2><p class="note">Use the account the Punong Barangay created for you.</p><form class="frm" data-f="login"><label>Email<input name="email" type="email" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button class="btn">Sign in</button></form></div>';
+}
+async function boot(){
+ if(SB_URL.includes("YOUR-PROJECT-ID")){say("Setup needed: open index.html and paste your Supabse Project URL into SB_URL.".replace("Supabse","Supabase"));return loginScreen()}
+ const {data:{session}}=await sb.auth.getSession();
+ if(!session)return loginScreen();
+ const {data:p}=await sb.from("profiles").select("*").eq("id",session.user.id).single();
+ if(!p||!p.is_active||!p.role){
+  $("view").innerHTML='<div class="panel login"><h2>Waiting for approval</h2><p>Your account is not active yet. Ask the Punong Barangay to give you a role.</p><button class="btn" id="out">Sign out</button></div>';return}
+ me=p;tab=tabsFor(p.role)[0];draw();
+}
+document.addEventListener("submit",async e=>{
+ e.preventDefault();const f=e.target,n=f.dataset.f,o=Object.fromEntries(new FormData(f));
+ if(n==="login"){const r=await sb.auth.signInWithPassword({email:o.email,password:o.password});if(r.error)return say("Sign-in failed. Check your email and password.");say("");await boot();sb.rpc("log_event",{p_action:"SIGN_IN"});return}
+ if(H[n]&&ok(await H[n](o)))draw();
+});
+document.addEventListener("click",async e=>{
+ const b=e.target.closest("button");if(!b)return;
+ if(b.id==="out"){await sb.rpc("log_event",{p_action:"SIGN_OUT"});await sb.auth.signOut();say("");return loginScreen()}
+ if(b.dataset.t){tab=b.dataset.t;say("");sb.rpc("log_event",{p_action:"VIEW",p_detail:MODS[tab]});return draw()}
+ if(b.dataset.adv){if(ok(await sb.from("requests").update({status:b.dataset.to}).eq("id",b.dataset.adv)))draw();return}
+ if(b.dataset.save){const id=b.dataset.save,role=document.querySelector('[data-role="'+id+'"]').value||null,act=document.querySelector('[data-act="'+id+'"]').checked;
+  if(act&&!role)return say("Choose a role before activating this account.");
+  if(ok(await sb.from("profiles").update({role,is_active:act}).eq("id",id))){sb.rpc("log_event",{p_action:"ROLE_CHANGE",p_detail:"Account "+id+" set to "+(role||"none")+(act?", active":", inactive")});draw()}}
+});
+sb.auth.onAuthStateChange(ev=>{if(ev==="SIGNED_OUT")loginScreen()});
+boot();
 </script>
 </body>
 </html>
