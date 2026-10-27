@@ -53,6 +53,17 @@ input::placeholder{color:#7A8AA0}input[type=checkbox]{width:auto}
 dialog{color:var(--ink);border-radius:20px;padding:20px;width:min(460px,calc(100% - 32px));background:rgba(255,255,255,.86);box-shadow:0 20px 60px rgba(31,58,95,.3)}
 dialog::backdrop{background:rgba(20,35,60,.35);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px)}
 .note{color:var(--mute);font-size:.88rem}.bad{color:var(--coral);font-weight:600}
+dialog.wide{width:min(780px,calc(100% - 32px));max-height:92vh;overflow:auto}
+.prev{border:1px solid var(--line);margin:12px 0;overflow:auto;background:#fff}
+#cert{display:none}
+.cert{font-family:Georgia,"Times New Roman",serif;color:#000;background:#fff;border:3px double #1F3A5F;padding:26px 32px;line-height:1.7;font-size:15px;min-width:520px}
+.cert .ch{text-align:center;line-height:1.35}.cert .ch b{font-size:1.35em;letter-spacing:.05em}
+.cert h2.ct{font-family:inherit;color:#000;text-align:center;font-size:1.5em;letter-spacing:.06em;margin:20px 0;text-decoration:underline}
+.cert p{text-indent:2em;text-align:justify;margin:10px 0}.cert p.n{text-indent:0}
+.cert .sig{margin:46px 0 0 auto;width:270px;text-align:center;border-top:1px solid #000;padding-top:4px}
+.cert .cf{margin-top:26px;font-size:.82em;line-height:1.6}
+@page{size:A4;margin:16mm}
+@media print{body::before{display:none}header,main,dialog{display:none!important}body{background:#fff}#cert{display:block!important}.cert{font-size:12pt;min-width:0}}
 </style>
 </head>
 <body>
@@ -62,6 +73,7 @@ dialog::backdrop{background:rgba(20,35,60,.35);-webkit-backdrop-filter:blur(5px)
 </header>
 <main><div id="msg" hidden></div><div id="view"></div></main>
 <dialog id="dlg"></dialog>
+<div id="cert"></div>
 <script>
 const SB_URL="https://iloftktissjnikmyedfj.supabase.co";
 const SB_KEY="sb_publishable_nyThP0h3QcRKGlRiqMinaQ_yNKI2Ej4";
@@ -111,12 +123,12 @@ async audit(){
  return '<div class="panel"><h2>Activity log</h2>'+tbl(["When","Who","Role","Action","File","Detail"],(data||[]).map(l=>[when(l.created_at),l.user_name,LABEL[l.user_role]||"",l.denied?{h:'<span class="bad">DENIED</span>'}:l.action,l.table_name||"",l.detail||""]))+'</div>'},
 async records(){
  const w=me.role==="secretary";
- const [r,q,b,p]=await Promise.all([sb.from("residents").select("id,full_name,birthdate,sex,sector,purok_id,puroks(name)").order("full_name").limit(300),sb.from("requests").select("id,ref_no,type,status,residents(full_name)").order("requested_at",{ascending:false}).limit(60),sb.from("blotter").select("id,case_no,incident,status").limit(40),sb.from("puroks").select("id,name").order("name")]);
+ const [r,q,b,p]=await Promise.all([sb.from("residents").select("id,full_name,birthdate,sex,sector,purok_id,puroks(name)").order("full_name").limit(300),sb.from("requests").select("id,ref_no,type,status,residents(full_name,birthdate,sex,puroks(name))").order("requested_at",{ascending:false}).limit(60),sb.from("blotter").select("id,case_no,incident,status").limit(40),sb.from("puroks").select("id,name").order("name")]);
  PU=(p.data||[]).map(x=>[x.id,x.name]);RES=(r.data||[]).map(x=>[x.id,x.full_name]);
  keep("residents",r.data);keep("requests",q.data);keep("blotter",b.data);
  return '<div class="grid"><div class="stat"><b>'+(r.data||[]).length+'</b><span>Residents listed</span></div><div class="stat"><b>'+(q.data||[]).filter(x=>x.status!=="released").length+'</b><span>Open requests</span></div><div class="stat"><b>'+(b.data||[]).filter(x=>x.status==="open").length+'</b><span>Open blotter cases</span></div></div>'+
  '<div class="panel"><h2>Residents</h2>'+addForm("residents",w,"Add resident")+'<input class="search" data-filter="rb" placeholder="Search residents…" aria-label="Search residents">'+tbl(["Name","Birthdate","Sex","Purok","Sector",""],(r.data||[]).map(x=>[x.full_name,x.birthdate,x.sex,x.puroks?.name,x.sector,{h:act("residents",x.id,w)}]),"rb")+'</div>'+
- '<div class="panel"><h2>Certificate requests</h2>'+(RES.length?addForm("requests",w,"New request"):"")+tbl(["Ref","Resident","Request","Status",""],(q.data||[]).map(x=>[x.ref_no,x.residents?.full_name,x.type,chip(x.status),{h:(w&&NEXT[x.status]?'<button class="ic" data-adv="'+x.id+'" data-to="'+NEXT[x.status]+'">Mark '+NEXT[x.status]+'</button>':"")+act("requests",x.id,w)}]))+'</div>'+
+ '<div class="panel"><h2>Certificate requests</h2>'+(RES.length?addForm("requests",w,"New request"):"")+tbl(["Ref","Resident","Request","Status",""],(q.data||[]).map(x=>[x.ref_no,x.residents?.full_name,x.type,chip(x.status),{h:(["approved","released"].includes(x.status)&&(w||me.role==="captain")?'<button class="ic" data-print="'+x.id+'">Print</button>':"")+(w&&NEXT[x.status]?'<button class="ic" data-adv="'+x.id+'" data-to="'+NEXT[x.status]+'">Mark '+NEXT[x.status]+'</button>':"")+act("requests",x.id,w)}]))+'</div>'+
  '<div class="panel"><h2>Blotter</h2>'+addForm("blotter",w,"Add case")+tbl(["Case","Incident","Status",""],(b.data||[]).map(x=>[x.case_no,x.incident,x.status,{h:act("blotter",x.id,w)}]))+'</div>'},
 async finance(){
  const w=me.role==="treasurer";
@@ -153,13 +165,40 @@ async function boot(){
   $("view").innerHTML='<div class="panel login"><h2>Waiting for approval</h2><p>Your account is not active yet. Ask the Punong Barangay to give you a role.</p><button class="btn" id="out">Sign out</button></div>';return}
  me=p;tab=tabsFor(p.role)[0];draw();
 }
+const PB="BOBBY CABRERA"; // name printed under "Punong Barangay" on certificates
+const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const ord=n=>{const s=["th","st","nd","rd"],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0])};
+const TITLES={"Barangay clearance":"BARANGAY CLEARANCE","Certificate of indigency":"CERTIFICATE OF INDIGENCY","Certificate of residency":"CERTIFICATE OF RESIDENCY","Business clearance":"BARANGAY BUSINESS CLEARANCE"};
+function certHTML(r,purpose){
+ const p=r.residents||{},nm=esc((p.full_name||"").toUpperCase()),pu="<b>"+esc(purpose||"any legal purpose")+"</b>";
+ let age="";if(p.birthdate){const b=new Date(p.birthdate),t=new Date();let a=t.getFullYear()-b.getFullYear();if(t<new Date(t.getFullYear(),b.getMonth(),b.getDate()))a--;age=a}
+ const who="<b>"+nm+"</b>"+(age!==""?", "+age+" years old":"")+(p.sex?", "+(p.sex==="F"?"female":"male"):"")+", ";
+ const home="a resident of "+esc(p.puroks?.name||"this barangay")+", Barangay Talisay, Santa Fe, Cebu";
+ const BODY={
+  "Barangay clearance":"This is to certify that "+who+home+", has no derogatory record on file in this office as of this date.</p><p>This clearance is issued upon the request of the above-named person for "+pu+".",
+  "Certificate of indigency":"This is to certify that "+who+home+", belongs to the indigent families of this barangay.</p><p>This certification is issued upon the request of the above-named person for "+pu+".",
+  "Certificate of residency":"This is to certify that "+who+"is a bona fide resident of "+esc(p.puroks?.name||"this barangay")+", Barangay Talisay, Santa Fe, Cebu.</p><p>This certification is issued upon the request of the above-named person for "+pu+".",
+  "Business clearance":"This is to certify that "+who+home+", is granted clearance by this office to operate a business within this barangay, subject to existing laws and ordinances.</p><p>This clearance is issued upon the request of the above-named person for "+pu+"."
+ };
+ const d=new Date();
+ return '<div class="cert"><div class="ch">Republic of the Philippines<br>Province of Cebu<br>Municipality of Santa Fe<br><b>BARANGAY TALISAY</b><br><small>OFFICE OF THE PUNONG BARANGAY</small></div><h2 class="ct">'+esc(TITLES[r.type]||r.type.toUpperCase())+'</h2><p class="n"><b>TO WHOM IT MAY CONCERN:</b></p><p>'+(BODY[r.type]||"")+'</p><p>Issued this '+ord(d.getDate())+' day of '+MONTHS[d.getMonth()]+', '+d.getFullYear()+' at Barangay Talisay, Santa Fe, Cebu, Philippines.</p><div class="sig"><b>HON. '+esc(PB)+'</b><br>Punong Barangay</div><div class="cf">Ref. No.: '+esc(r.ref_no)+'<br>O.R. No.: ____________ &nbsp; Amount paid: ____________<br>Prepared by: '+esc(me.full_name)+'<br><i>Not valid without the official dry seal.</i></div></div>'}
+function openPrint(id){
+ const r=ROWS.requests[id];if(!r)return;
+ dlg.className="wide";
+ dlg.innerHTML='<h2>Print certificate</h2><label>Purpose<input id="pur" data-rid="'+id+'" value="any legal purpose"></label><div class="prev" id="prev">'+certHTML(r,"any legal purpose")+'</div><div class="acts"><button class="btn" data-doprint="'+id+'">Print</button><button type="button" class="btn ghost" data-close>Close</button></div><p class="note">Tip: in the print window you can choose “Save as PDF” instead of a printer.</p>';
+ dlg.showModal()}
+function doPrint(id){
+ const r=ROWS.requests[id];if(!r)return;
+ $("cert").innerHTML=certHTML(r,$("pur").value);
+ sb.rpc("log_event",{p_action:"PRINT",p_detail:r.type+" "+r.ref_no});
+ window.print()}
 const dlg=$("dlg");
 function openEdit(t,id){
  const row=ROWS[t][id];if(!row)return;
- dlg.innerHTML='<h2>Edit '+CFG[t].n+'</h2><form class="frm one" data-f="edit|'+t+'|'+id+'">'+CFG[t].f(true).map(f=>fld(f,row[f[0]])).join('')+'<div class="acts"><button class="btn">Save changes</button><button type="button" class="btn ghost" data-close>Cancel</button></div></form>';dlg.showModal()}
+ dlg.className="";dlg.innerHTML='<h2>Edit '+CFG[t].n+'</h2><form class="frm one" data-f="edit|'+t+'|'+id+'">'+CFG[t].f(true).map(f=>fld(f,row[f[0]])).join('')+'<div class="acts"><button class="btn">Save changes</button><button type="button" class="btn ghost" data-close>Cancel</button></div></form>';dlg.showModal()}
 function openDel(t,id){
  const r=ROWS[t][id]||{},name=r.full_name||r.ref_no||r.case_no||r.or_no||r.description||r.program||"this record";
- dlg.innerHTML='<h2>Delete '+CFG[t].n+'?</h2><p>“'+esc(name)+'” will be removed. This action is recorded in the activity log and can’t be undone.</p><form class="frm one" data-f="del|'+t+'|'+id+'"><div class="acts"><button class="btn danger">Yes, delete</button><button type="button" class="btn ghost" data-close>Cancel</button></div></form>';dlg.showModal()}
+ dlg.className="";dlg.innerHTML='<h2>Delete '+CFG[t].n+'?</h2><p>“'+esc(name)+'” will be removed. This action is recorded in the activity log and can’t be undone.</p><form class="frm one" data-f="del|'+t+'|'+id+'"><div class="acts"><button class="btn danger">Yes, delete</button><button type="button" class="btn ghost" data-close>Cancel</button></div></form>';dlg.showModal()}
 document.addEventListener("submit",async e=>{
  e.preventDefault();const f=e.target,n=f.dataset.f,o=Object.fromEntries(new FormData(f));
  if(n==="login"){const r=await sb.auth.signInWithPassword({email:o.email,password:o.password});if(r.error)return say("Sign-in failed. Check your email and password.");say("");await boot();sb.rpc("log_event",{p_action:"SIGN_IN"});return}
@@ -169,9 +208,11 @@ document.addEventListener("submit",async e=>{
  if(m==="requests")o.ref_no="REQ-"+new Date().toISOString().slice(2,7).replace("-","")+"-"+Math.floor(100+Math.random()*900);
  if(ok(await sb.from(m).insert(pre(m,o)).select())){say("Added.",1);draw()}
 });
-document.addEventListener("input",e=>{const k=e.target.dataset.filter;if(!k)return;const q=e.target.value.toLowerCase();document.querySelectorAll("#"+k+" tr").forEach(r=>{r.hidden=!r.textContent.toLowerCase().includes(q)})});
+document.addEventListener("input",e=>{if(e.target.id==="pur"){$("prev").innerHTML=certHTML(ROWS.requests[e.target.dataset.rid],e.target.value);return}const k=e.target.dataset.filter;if(!k)return;const q=e.target.value.toLowerCase();document.querySelectorAll("#"+k+" tr").forEach(r=>{r.hidden=!r.textContent.toLowerCase().includes(q)})});
 document.addEventListener("click",async e=>{
  const b=e.target.closest("button");if(!b)return;
+ if(b.dataset.print)return openPrint(b.dataset.print);
+ if(b.dataset.doprint)return doPrint(b.dataset.doprint);
  if("close" in b.dataset)return dlg.close();
  if(b.dataset.edit)return openEdit(...b.dataset.edit.split("|"));
  if(b.dataset.del)return openDel(...b.dataset.del.split("|"));
