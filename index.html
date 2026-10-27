@@ -70,6 +70,8 @@ dialog{max-height:92vh;overflow:auto}
 .bar i{display:block;height:14px;border-radius:7px;background:linear-gradient(90deg,#2BB5A0,#1F3A5F)}
 .bar em{font-style:normal;text-align:right;color:var(--mute)}
 .cert .cf{overflow:hidden}.cert .qr{float:left;margin:0 14px 0 0;width:84px;height:84px;image-rendering:pixelated}
+.sf{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}.sf input{max-width:300px}
+.pkres{display:grid;gap:4px}.pkopt{text-align:left;font:inherit;font-weight:400;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);cursor:pointer}.pkopt:hover{background:#EAF1FB}
 @page{size:A4;margin:16mm}
 @media print{body::before{display:none}header,main,dialog{display:none!important}body{background:#fff}#cert{display:block!important}.cert{font-size:12pt;min-width:0}}
 </style>
@@ -94,14 +96,14 @@ const opt=a=>a.map(x=>[x,x]);
 const TYPES=opt(["Barangay clearance","Certificate of indigency","Certificate of residency","Business clearance"]);
 const PROG=opt(["Immunization","Prenatal","Senior check-up","Nutrition","Family planning"]);
 const BST=[["open","Open"],["mediation","Mediation"],["settled","Settled"],["referred","Referred"]];
-let me=null,tab=null,PU=[],RES=[],ROWS={},IMP=[],UNPAID=[["","— none —"]],MONTH=new Date().toISOString().slice(0,7);
+let me=null,tab=null,PU=[],RES=[],ROWS={},IMP=[],RQ="",RP=0,HQ="",HP=0,QQ="",QP=0,UNPAID=[["","— none —"]],MONTH=new Date().toISOString().slice(0,7);
 const CFG={
  residents:{n:"resident",f:()=>[["full_name","Full name","text"],["birthdate","Birthdate","date","opt"],["sex","Sex","select",[["M","Male"],["F","Female"]]],["purok_id","Purok","select",PU],["sector","Sector (optional)","text","opt"]]},
- requests:{n:"request",x:()=>[["resident_id","Resident","select",RES]],f:e=>[["type","Type","select",TYPES]].concat(e?[["status","Status","select",opt(Object.keys(NEXT).concat("released"))]]:[])},
+ requests:{n:"request",x:()=>[["resident_id","Resident","person"]],f:e=>[["type","Type","select",TYPES]].concat(e?[["status","Status","select",opt(Object.keys(NEXT).concat("released"))]]:[])},
  blotter:{n:"blotter case",f:()=>[["case_no","Case no.","text"],["complainant_name","Complainant","text"],["respondent_name","Respondent","text"],["respondent_address","Respondent’s address","text","opt"],["incident","Complaint / incident","text"],["hearing_date","Hearing date","date","opt"],["hearing_time","Hearing time","time","opt"],["status","Status","select",BST]]},
  payments:{n:"receipt",f:()=>[["or_no","OR no.","text"],["payer_name","Payer","text"],["item","Item","text"],["amount","Amount","number"],["request_ref","Linked request (optional)","select",UNPAID,"opt"]]},
  expenses:{n:"expense",f:()=>[["description","Description","text"],["amount","Amount","number"]]},
- health_records:{n:"health record",x:()=>[["resident_id","Resident","select",RES]],f:()=>[["program","Program","select",PROG],["status","Status","text","opt"],["notes","Notes","text","opt"]]}
+ health_records:{n:"health record",x:()=>[["resident_id","Resident","person"]],f:()=>[["program","Program","select",PROG],["status","Status","text","opt"],["notes","Notes","text","opt"]]}
 };
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const cell=c=>c&&c.h!==undefined?c.h:esc(c);
@@ -110,7 +112,7 @@ const when=t=>t?new Date(t).toLocaleString([], {month:"short",day:"numeric",hour
 const peso=n=>"₱"+Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
 const chip=s=>({h:'<span class="chip '+esc(s)+'">'+esc(s)+'</span>'});
 const opts=(a,v)=>(v&&!a.some(o=>o[0]==v)?a.concat([[v,v]]):a).map(o=>'<option value="'+esc(o[0])+'"'+(o[0]==v?' selected':'')+'>'+esc(o[1])+'</option>').join('');
-const fld=(f,v)=>'<label>'+f[1]+(f[2]==="select"?'<select name="'+f[0]+'"'+(f[4]==="opt"?'':' required')+'>'+opts(f[3],v)+'</select>':'<input name="'+f[0]+'" type="'+f[2]+'"'+(f[2]==="number"?' step="0.01" min="0"':'')+(f[3]==="opt"?'':' required')+' value="'+esc(v??"")+'">')+'</label>';
+const fld=(f,v)=>f[2]==="person"?'<label>'+f[1]+'<input data-pk placeholder="Type at least 2 letters of the name…" autocomplete="off"><input type="hidden" name="'+f[0]+'"><div class="pkres"></div></label>':'<label>'+f[1]+(f[2]==="select"?'<select name="'+f[0]+'"'+(f[4]==="opt"?'':' required')+'>'+opts(f[3],v)+'</select>':'<input name="'+f[0]+'" type="'+f[2]+'"'+(f[2]==="number"?' step="0.01" min="0"':'')+(f[3]==="opt"?'':' required')+' value="'+esc(v??"")+'">')+'</label>';
 const form=(name,fields,btn)=>'<form class="frm" data-f="'+name+'">'+fields.map(f=>fld(f)).join('')+'<button class="btn">'+btn+'</button></form>';
 const keep=(t,a)=>{ROWS[t]=Object.fromEntries((a||[]).map(x=>[x.id,x]))};
 const act=(t,id,w)=>w?'<button class="ic" data-edit="'+t+'|'+id+'">Edit</button><button class="ic del" data-del="'+t+'|'+id+'">Delete</button>':"";
@@ -119,16 +121,27 @@ function say(t,good){const m=$("msg");m.textContent=t||"";m.className=good?"good
 const ok=r=>{if(r.error){say(r.error.code==="23503"?"This record is linked to other files (for example requests or health records), so it can’t be deleted yet. Remove those first.":r.error.message);return false}if(r.data&&!r.data.length){say("Not allowed, or the record no longer exists.");return false}say("");return true};
 function pre(t,o){const x={...o};["birthdate","sector","status","notes","request_ref","respondent_address","hearing_date","hearing_time"].forEach(k=>{if(k in x&&x[k]==="")x[k]=null});if("amount" in x)x.amount=+x.amount;return x}
 
+const lk=q=>"%"+q.replace(/[%_]/g,"")+"%";
+const searchForm=(n,v,clr)=>'<form class="sf" data-f="'+n+'"><input name="q" placeholder="Search by name…" value="'+esc(v)+'" aria-label="Search"><button class="btn ghost">Search</button>'+(v?'<button type="button" class="btn ghost" data-'+clr+'>Clear</button>':'')+'</form>';
+const PS=10;
+function pager(tot,p,k){const from=tot?p*PS+1:0,to=Math.min(tot,p*PS+PS);return'<div class="acts" style="margin-top:10px;align-items:center;flex-wrap:wrap"><button class="btn ghost" data-'+k+'="-1"'+(p?"":" disabled")+'>Previous</button><button class="btn ghost" data-'+k+'="1"'+(to>=tot?" disabled":"")+'>Next</button><span class="note">Showing '+from+'–'+to+' of '+tot+'</span></div>'}
+async function reqQuery(){
+ let q=sb.from("requests").select("id,ref_no,type,status,residents(full_name,birthdate,sex,puroks(name))",{count:"exact"}).order("requested_at",{ascending:false});
+ if(QQ){const t=QQ.replace(/[%_,()*]/g,""),m=await sb.from("residents").select("id").ilike("full_name",lk(t)).limit(100),ids=(m.data||[]).map(x=>x.id);
+  q=ids.length?q.or("ref_no.ilike.*"+t+"*,resident_id.in.("+ids.join(",")+")"):q.ilike("ref_no","%"+t+"%")}
+ return q.range(QP*PS,QP*PS+PS-1)}
+function resQuery(){let q=sb.from("residents").select("id,full_name,birthdate,sex,sector,purok_id,puroks(name)",{count:"exact"}).order("full_name");if(RQ)q=q.ilike("full_name",lk(RQ));return q.range(RP*PS,RP*PS+PS-1)}
+async function namesFor(ids){const out={};for(let i=0;i<ids.length;i+=80){const r=await sb.from("residents_basic").select("id,full_name").in("id",ids.slice(i,i+80));(r.data||[]).forEach(x=>{out[x.id]=x.full_name})}return out}
 const V={
 async dash(){
  const [ms,ne]=range();
- const [rs,q,p,e,h,bl]=await Promise.all([sb.from("residents").select("puroks(name)").limit(5000),sb.from("requests").select("status").gte("requested_at",ms).lt("requested_at",ne),sb.from("payments").select("amount").gte("paid_at",ms).lt("paid_at",ne),sb.from("expenses").select("amount").gte("spent_at",ms).lt("spent_at",ne),sb.from("health_records").select("id").gte("visit_date",ms).lt("visit_date",ne),sb.from("blotter").select("case_no,complainant_name,respondent_name,hearing_date,hearing_time,status").gte("hearing_date",todayStr()).limit(100)]);
+ const [rs,q,p,e,h,bl]=await Promise.all([sb.from("residents").select("id",{count:"exact",head:true}),sb.from("requests").select("status").gte("requested_at",ms).lt("requested_at",ne),sb.from("payments").select("amount").gte("paid_at",ms).lt("paid_at",ne),sb.from("expenses").select("amount").gte("spent_at",ms).lt("spent_at",ne),sb.from("health_records").select("id").gte("visit_date",ms).lt("visit_date",ne),sb.from("blotter").select("case_no,complainant_name,respondent_name,hearing_date,hearing_time,status").gte("hearing_date",todayStr()).limit(100)]);
  const sum=a=>(a.data||[]).reduce((t,x)=>t+ +x.amount,0),tp=sum(p),te=sum(e),by={},st={};
- (rs.data||[]).forEach(x=>{const n=x.puroks?.name||"No purok";by[n]=(by[n]||0)+1});
+ const pk=await sb.from("puroks").select("id,name").order("name"),pc=await Promise.all((pk.data||[]).map(x=>sb.from("residents").select("id",{count:"exact",head:true}).eq("purok_id",x.id)));(pk.data||[]).forEach((x,i)=>{by[x.name]=pc[i].count||0});
  (q.data||[]).forEach(x=>{st[x.status]=(st[x.status]||0)+1});
  const mx=Math.max(1,...Object.values(by));
  return '<div class="panel"><h2>Monthly overview</h2><div class="acts" style="flex-wrap:wrap;align-items:end"><label>Month<input type="month" id="mo" value="'+MONTH+'"></label><button class="btn" data-report>Download Excel report</button></div></div>'+
- '<div class="grid"><div class="stat"><b>'+(rs.data||[]).length+'</b><span>Residents</span></div><div class="stat"><b>'+(q.data||[]).length+'</b><span>Requests this month</span></div><div class="stat"><b>'+(h.data||[]).length+'</b><span>Health visits</span></div><div class="stat"><b>'+peso(tp)+'</b><span>Collected</span></div><div class="stat"><b>'+peso(te)+'</b><span>Spent</span></div><div class="stat"><b>'+peso(tp-te)+'</b><span>Balance</span></div></div>'+
+ '<div class="grid"><div class="stat"><b>'+(rs.count||0)+'</b><span>Residents</span></div><div class="stat"><b>'+(q.data||[]).length+'</b><span>Requests this month</span></div><div class="stat"><b>'+(h.data||[]).length+'</b><span>Health visits</span></div><div class="stat"><b>'+peso(tp)+'</b><span>Collected</span></div><div class="stat"><b>'+peso(te)+'</b><span>Spent</span></div><div class="stat"><b>'+peso(tp-te)+'</b><span>Balance</span></div></div>'+
  upHTML(upcoming(bl.data))+'<div class="panel"><h2>Residents per purok</h2>'+(Object.keys(by).sort().map(n=>'<div class="bar"><span>'+esc(n)+'</span><i style="width:'+Math.max(2,by[n]/mx*100)+'%"></i><em>'+by[n]+'</em></div>').join("")||'<p class="note">No residents yet.</p>')+'</div>'+
  '<div class="panel"><h2>Requests this month</h2>'+(Object.keys(st).map(k=>'<span class="chip '+k+'" style="margin-right:6px">'+k+': '+st[k]+'</span>').join("")||'<p class="note">None yet.</p>')+'</div>'},
 async users(){
@@ -142,12 +155,12 @@ async audit(){
  return '<div class="panel"><h2>Activity log</h2>'+tbl(["When","Who","Role","Action","File","Detail"],(data||[]).map(l=>[when(l.created_at),l.user_name,LABEL[l.user_role]||"",l.denied?{h:'<span class="bad">DENIED</span>'}:l.action,l.table_name||"",l.detail||""]))+'</div>'},
 async records(){
  const w=me.role==="secretary";
- const [r,q,b,p]=await Promise.all([sb.from("residents").select("id,full_name,birthdate,sex,sector,purok_id,puroks(name)").order("full_name").limit(300),sb.from("requests").select("id,ref_no,type,status,residents(full_name,birthdate,sex,puroks(name))").order("requested_at",{ascending:false}).limit(60),sb.from("blotter").select("id,case_no,incident,status,complainant_name,respondent_name,respondent_address,hearing_date,hearing_time").order("created_at",{ascending:false}).limit(60),sb.from("puroks").select("id,name").order("name")]);
+ const [r,q,b,p,oc]=await Promise.all([resQuery(),reqQuery(),sb.from("blotter").select("id,case_no,incident,status,complainant_name,respondent_name,respondent_address,hearing_date,hearing_time").order("created_at",{ascending:false}).limit(60),sb.from("puroks").select("id,name").order("name"),sb.from("requests").select("id",{count:"exact",head:true}).neq("status","released")]);
  PU=(p.data||[]).map(x=>[x.id,x.name]);RES=(r.data||[]).map(x=>[x.id,x.full_name]);
  keep("residents",r.data);keep("requests",q.data);keep("blotter",b.data);
- return '<div class="grid"><div class="stat"><b>'+(r.data||[]).length+'</b><span>Residents listed</span></div><div class="stat"><b>'+(q.data||[]).filter(x=>x.status!=="released").length+'</b><span>Open requests</span></div><div class="stat"><b>'+(b.data||[]).filter(x=>x.status==="open").length+'</b><span>Open blotter cases</span></div></div>'+
- '<div class="panel"><h2>Residents</h2>'+addForm("residents",w,"Add resident")+(w?'<div class="acts" style="margin-bottom:10px;flex-wrap:wrap"><label class="btn ghost" style="cursor:pointer">Import from Excel / CSV<input id="xl" type="file" accept=".xlsx,.xls,.csv" hidden></label><button class="btn ghost" data-tpl>Download template</button></div>':"")+'<input class="search" data-filter="rb" placeholder="Search residents…" aria-label="Search residents">'+tbl(["Name","Birthdate","Sex","Purok","Sector",""],(r.data||[]).map(x=>[x.full_name,x.birthdate,x.sex,x.puroks?.name,x.sector,{h:act("residents",x.id,w)}]),"rb")+'</div>'+
- '<div class="panel"><h2>Certificate requests</h2>'+(RES.length?addForm("requests",w,"New request"):"")+tbl(["Ref","Resident","Request","Status",""],(q.data||[]).map(x=>[x.ref_no,x.residents?.full_name,x.type,chip(x.status),{h:(["approved","released"].includes(x.status)&&(w||me.role==="captain")?'<button class="ic" data-print="'+x.id+'">Print</button>':"")+(w&&NEXT[x.status]?'<button class="ic" data-adv="'+x.id+'" data-to="'+NEXT[x.status]+'">Mark '+NEXT[x.status]+'</button>':"")+act("requests",x.id,w)}]))+'</div>'+
+ return '<div class="grid"><div class="stat"><b>'+(r.count||0)+'</b><span>'+(RQ?"Matching residents":"Residents")+'</span></div><div class="stat"><b>'+(oc.count||0)+'</b><span>Open requests</span></div><div class="stat"><b>'+(b.data||[]).filter(x=>x.status==="open").length+'</b><span>Open blotter cases</span></div></div>'+
+ '<div class="panel"><h2>Residents</h2>'+addForm("residents",w,"Add resident")+(w?'<div class="acts" style="margin-bottom:10px;flex-wrap:wrap"><label class="btn ghost" style="cursor:pointer">Import from Excel / CSV<input id="xl" type="file" accept=".xlsx,.xls,.csv" hidden></label><button class="btn ghost" data-tpl>Download template</button></div>':"")+searchForm("rsearch",RQ,"rclear")+tbl(["Name","Birthdate","Sex","Purok","Sector",""],(r.data||[]).map(x=>[x.full_name,x.birthdate,x.sex,x.puroks?.name,x.sector,{h:act("residents",x.id,w)}]),"rb")+pager(r.count||0,RP,"rpage")+'</div>'+
+ '<div class="panel"><h2>Certificate requests</h2>'+addForm("requests",w,"New request")+searchForm("qsearch",QQ,"qclear")+tbl(["Ref","Resident","Request","Status",""],(q.data||[]).map(x=>[x.ref_no,x.residents?.full_name,x.type,chip(x.status),{h:(["approved","released"].includes(x.status)&&(w||me.role==="captain")?'<button class="ic" data-print="'+x.id+'">Print</button>':"")+(w&&NEXT[x.status]?'<button class="ic" data-adv="'+x.id+'" data-to="'+NEXT[x.status]+'">Mark '+NEXT[x.status]+'</button>':"")+act("requests",x.id,w)}]))+pager(q.count||0,QP,"qpage")+'</div>'+
  ''+upHTML(upcoming(b.data))+'<div class="panel"><h2>Blotter</h2>'+addForm("blotter",w,"Add case")+tbl(["Case","Complainant","Respondent","Incident","Hearing","Status",""],(b.data||[]).map(x=>[x.case_no,x.complainant_name,x.respondent_name,x.incident,x.hearing_date?x.hearing_date+(x.hearing_time?" "+x.hearing_time:""):"",x.status,{h:((w||me.role==="captain")?'<button class="ic" data-summ="'+x.id+'">Documents</button>':"")+act("blotter",x.id,w)}]))+'</div>'},
 async finance(){
  const w=me.role==="treasurer";
@@ -159,11 +172,13 @@ async finance(){
  '<div class="panel"><h2>Official receipts</h2>'+addForm("payments",w,"Add receipt")+tbl(["OR no.","Payer","Item","Amount","Date","Request",""],(p.data||[]).map(x=>[x.or_no,x.payer_name,x.item,peso(x.amount),when(x.paid_at),x.request_ref||"",{h:act("payments",x.id,w)}]))+'</div>'+
  '<div class="panel"><h2>Expenses</h2>'+addForm("expenses",w,"Add expense")+tbl(["Date","Description","Amount",""],(e.data||[]).map(x=>[x.spent_at,x.description,peso(x.amount),{h:act("expenses",x.id,w)}]))+'</div>'},
 async health(){
- const w=me.role==="bhw";
- const [h,r]=await Promise.all([sb.from("health_records").select("*").order("visit_date",{ascending:false}).limit(100),sb.from("residents_basic").select("id,full_name").order("full_name").limit(500)]);
- RES=(r.data||[]).map(x=>[x.id,x.full_name]);keep("health_records",h.data);
- const nm=Object.fromEntries(RES);
- return '<div class="panel"><h2>Health files</h2>'+(RES.length?addForm("health_records",w,"Add record"):"")+tbl(["Name","Program","Visit","Status","Notes",""],(h.data||[]).map(x=>[nm[x.resident_id]||"",x.program,x.visit_date,x.status,x.notes,{h:act("health_records",x.id,w)}]))+'<p class="note">Medical details are visible only to the BHW and the Punong Barangay.</p></div>'}
+ const w=me.role==="bhw";let h;
+ if(HQ){const m=await sb.from("residents_basic").select("id").ilike("full_name",lk(HQ)).limit(200),ids=(m.data||[]).map(x=>x.id);
+  h=ids.length?await sb.from("health_records").select("*",{count:"exact"}).in("resident_id",ids).order("visit_date",{ascending:false}).range(HP*PS,HP*PS+PS-1):{data:[],count:0}}
+ else h=await sb.from("health_records").select("*",{count:"exact"}).order("visit_date",{ascending:false}).range(HP*PS,HP*PS+PS-1);
+ keep("health_records",h.data);
+ const nm=await namesFor([...new Set((h.data||[]).map(x=>x.resident_id))]);
+ return '<div class="panel"><h2>Health files</h2>'+addForm("health_records",w,"Add record")+searchForm("hsearch",HQ,"hclear")+tbl(["Name","Program","Visit","Status","Notes",""],(h.data||[]).map(x=>[nm[x.resident_id]||"",x.program,x.visit_date,x.status,x.notes,{h:act("health_records",x.id,w)}]))+pager(h.count||0,HP,"hpage")+'<p class="note">Medical details are visible only to the BHW and the Punong Barangay.</p></div>'}
 };
 
 function tabsFor(r){return r==="captain"?["dash","users","audit","records","finance","health"]:[{secretary:"records",treasurer:"finance",bhw:"health"}[r]]}
@@ -188,8 +203,8 @@ async function boot(){
 function range(){const [y,m]=MONTH.split("-").map(Number),n=new Date(y,m,1);return[MONTH+"-01",n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0")+"-01"]}
 async function report(){
  say("Preparing report…");const [ms,ne]=range();
- const [p,e,q,h,r]=await Promise.all([sb.from("payments").select("*").gte("paid_at",ms).lt("paid_at",ne).order("paid_at"),sb.from("expenses").select("*").gte("spent_at",ms).lt("spent_at",ne).order("spent_at"),sb.from("requests").select("ref_no,type,status,requested_at,residents(full_name)").gte("requested_at",ms).lt("requested_at",ne),sb.from("health_records").select("*").gte("visit_date",ms).lt("visit_date",ne),sb.from("residents_basic").select("id,full_name").limit(5000)]);
- const nm=Object.fromEntries((r.data||[]).map(x=>[x.id,x.full_name])),sum=a=>(a||[]).reduce((t,x)=>t+ +x.amount,0),tp=sum(p.data),te=sum(e.data);
+ const [p,e,q,h]=await Promise.all([sb.from("payments").select("*").gte("paid_at",ms).lt("paid_at",ne).order("paid_at"),sb.from("expenses").select("*").gte("spent_at",ms).lt("spent_at",ne).order("spent_at"),sb.from("requests").select("ref_no,type,status,requested_at,residents(full_name)").gte("requested_at",ms).lt("requested_at",ne),sb.from("health_records").select("*").gte("visit_date",ms).lt("visit_date",ne)]);
+ const nm=await namesFor([...new Set((h.data||[]).map(x=>x.resident_id))]),sum=a=>(a||[]).reduce((t,x)=>t+ +x.amount,0),tp=sum(p.data),te=sum(e.data);
  const wb=XLSX.utils.book_new(),add=(n,a)=>XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(a.length?a:[{Note:"No records"}]),n);
  add("Summary",[{Item:"Barangay",Value:"Talisay, Santa Fe, Cebu"},{Item:"Month",Value:MONTH},{Item:"Collected",Value:tp},{Item:"Spent",Value:te},{Item:"Balance",Value:tp-te},{Item:"Requests",Value:(q.data||[]).length},{Item:"Health visits",Value:(h.data||[]).length}]);
  add("Collections",(p.data||[]).map(x=>({"OR no.":x.or_no,Payer:x.payer_name,Item:x.item,Amount:+x.amount,Date:x.paid_at.slice(0,10),"Request ref":x.request_ref||""})));
@@ -292,13 +307,23 @@ function openDel(t,id){
 document.addEventListener("submit",async e=>{
  e.preventDefault();const f=e.target,n=f.dataset.f,o=Object.fromEntries(new FormData(f));
  if(n==="login"){const r=await sb.auth.signInWithPassword({email:o.email,password:o.password});if(r.error)return say("Sign-in failed. Check your email and password.");say("");await boot();sb.rpc("log_event",{p_action:"SIGN_IN"});return}
+ if(n==="rsearch"){RQ=(o.q||"").trim();RP=0;return draw()}
+ if(n==="hsearch"){HQ=(o.q||"").trim();HP=0;return draw()}
+ if(n==="qsearch"){QQ=(o.q||"").trim();QP=0;return draw()}
+ if(f.querySelector('[name="resident_id"]')&&!o.resident_id)return say("Please search and choose a resident from the list.");
  const [m,t,id]=n.split("|");
  if(m==="edit"){if(ok(await sb.from(t).update(pre(t,o)).eq("id",id).select())){dlg.close();say("Changes saved.",1);draw()}return}
  if(m==="del"){if(ok(await sb.from(t).delete().eq("id",id).select())){dlg.close();say("Deleted.",1);draw()}else dlg.close();return}
  if(m==="requests")o.ref_no="REQ-"+new Date().toISOString().slice(2,7).replace("-","")+"-"+Math.floor(100+Math.random()*900);
  if(ok(await sb.from(m).insert(pre(m,o)).select())){say("Added.",1);draw()}
 });
-document.addEventListener("input",e=>{if(["sdoc","sd","st","sv","sx","sg"].includes(e.target.id)){refreshDoc(e.target.dataset.rid);return}if(e.target.id==="pur"){$("prev").innerHTML=certHTML(ROWS.requests[e.target.dataset.rid],e.target.value);return}const k=e.target.dataset.filter;if(!k)return;const q=e.target.value.toLowerCase();document.querySelectorAll("#"+k+" tr").forEach(r=>{r.hidden=!r.textContent.toLowerCase().includes(q)})});
+let pkT;
+document.addEventListener("input",e=>{
+ if(e.target.dataset.pk!==undefined){clearTimeout(pkT);const el=e.target,q=el.value.trim();el.nextElementSibling.value="";
+  pkT=setTimeout(async()=>{const box=el.parentElement.querySelector(".pkres");if(q.length<2){box.innerHTML="";return}
+   const r=await sb.from("residents_basic").select("id,full_name,birthdate").ilike("full_name",lk(q)).order("full_name").limit(8);
+   box.innerHTML=(r.data||[]).map(x=>'<button type="button" class="pkopt" data-pick="'+x.id+'" data-name="'+esc(x.full_name)+'">'+esc(x.full_name)+(x.birthdate?" · "+esc(x.birthdate):"")+'</button>').join("")||'<span class="note">No match. Check the spelling, or add the resident first.</span>'},250);return}
+ if(["sdoc","sd","st","sv","sx","sg"].includes(e.target.id)){refreshDoc(e.target.dataset.rid);return}if(e.target.id==="pur"){$("prev").innerHTML=certHTML(ROWS.requests[e.target.dataset.rid],e.target.value);return}const k=e.target.dataset.filter;if(!k)return;const q=e.target.value.toLowerCase();document.querySelectorAll("#"+k+" tr").forEach(r=>{r.hidden=!r.textContent.toLowerCase().includes(q)})});
 document.addEventListener("click",async e=>{
  const b=e.target.closest("button");if(!b)return;
  if("report" in b.dataset)return report();
@@ -308,6 +333,13 @@ document.addEventListener("click",async e=>{
  if(b.dataset.dosumm)return doSumm(b.dataset.dosumm);
  if(b.dataset.print)return openPrint(b.dataset.print);
  if(b.dataset.doprint)return doPrint(b.dataset.doprint);
+ if(b.dataset.pick){const l=b.closest("label");l.querySelector("[data-pk]").value=b.dataset.name;l.querySelector("input[type=hidden]").value=b.dataset.pick;l.querySelector(".pkres").innerHTML="";return}
+ if(b.dataset.rpage){RP=Math.max(0,RP+ +b.dataset.rpage);return draw()}
+ if(b.dataset.qpage){QP=Math.max(0,QP+ +b.dataset.qpage);return draw()}
+ if(b.dataset.hpage){HP=Math.max(0,HP+ +b.dataset.hpage);return draw()}
+ if("qclear" in b.dataset){QQ="";QP=0;return draw()}
+ if("rclear" in b.dataset){RQ="";RP=0;return draw()}
+ if("hclear" in b.dataset){HQ="";HP=0;return draw()}
  if("close" in b.dataset)return dlg.close();
  if(b.dataset.edit)return openEdit(...b.dataset.edit.split("|"));
  if(b.dataset.del)return openDel(...b.dataset.del.split("|"));
