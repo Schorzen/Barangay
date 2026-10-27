@@ -96,7 +96,7 @@ const opt=a=>a.map(x=>[x,x]);
 const TYPES=opt(["Barangay clearance","Certificate of indigency","Certificate of residency","Business clearance"]);
 const PROG=opt(["Immunization","Prenatal","Senior check-up","Nutrition","Family planning"]);
 const BST=[["open","Open"],["mediation","Mediation"],["settled","Settled"],["referred","Referred"]];
-let me=null,tab=null,PU=[],RES=[],ROWS={},IMP=[],RQ="",RP=0,HQ="",HP=0,QQ="",QP=0,UNPAID=[["","— none —"]],MONTH=new Date().toISOString().slice(0,7);
+let me=null,tab=null,PU=[],RES=[],ROWS={},SH=null,IMP=[],RQ="",RP=0,HQ="",HP=0,QQ="",QP=0,UNPAID=[["","— none —"]],MONTH=new Date().toISOString().slice(0,7);
 const CFG={
  residents:{n:"resident",f:()=>[["full_name","Full name","text"],["birthdate","Birthdate","date","opt"],["sex","Sex","select",[["M","Male"],["F","Female"]]],["purok_id","Purok","select",PU],["sector","Sector (optional)","text","opt"]]},
  requests:{n:"request",x:()=>[["resident_id","Resident","person"]],f:e=>[["type","Type","select",TYPES]].concat(e?[["status","Status","select",opt(Object.keys(NEXT).concat("released"))]]:[])},
@@ -184,12 +184,17 @@ async health(){
 function tabsFor(r){return r==="captain"?["dash","users","audit","records","finance","health"]:[{secretary:"records",treasurer:"finance",bhw:"health"}[r]]}
 async function draw(){
  $("who").innerHTML='<div class="me"><b>'+esc(me.full_name)+'</b>'+LABEL[me.role]+'</div><button class="btn ghost" id="out" style="margin-top:6px;float:right">Sign out</button>';
- $("nav").innerHTML=tabsFor(me.role).map(t=>'<button role="tab" data-t="'+t+'" aria-selected="'+(t===tab)+'">'+MODS[t]+'</button>').join('');
- $("view").innerHTML='<p class="note" style="margin-top:16px">Loading…</p>';
- $("view").innerHTML=await V[tab]();
+ const nl=$("nav").scrollLeft;
+ $("nav").innerHTML=tabsFor(me.role).map(t=>'<button role="tab" data-t="'+t+'" aria-selected="'+(t===tab)+'">'+MODS[t]+'</button>').join('');$("nav").scrollLeft=nl;
+ const same=SH===tab,y=window.scrollY,fk=document.activeElement?.closest?.("form[data-f]")?.dataset.f;
+ if(!same)$("view").innerHTML='<p class="note" style="margin-top:16px">Loading…</p>';
+ const html=await V[tab]();
+ $("view").innerHTML=html;SH=tab;
+ if(same)window.scrollTo(0,y);
+ if(fk&&/search$/.test(fk)){const el=document.querySelector('form[data-f="'+fk+'"] input[name="q"]');if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length)}}
 }
 function loginScreen(){
- $("who").innerHTML="";$("nav").innerHTML="";me=null;
+ $("who").innerHTML="";$("nav").innerHTML="";me=null;SH=null;
  $("view").innerHTML='<div class="panel login"><h2>Staff sign-in</h2><p class="note">Use the account the Punong Barangay created for you.</p><form class="frm" data-f="login"><label>Email<input name="email" type="email" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button class="btn">Sign in</button></form></div>';
 }
 async function boot(){
@@ -198,7 +203,7 @@ async function boot(){
  const {data:p}=await sb.from("profiles").select("*").eq("id",session.user.id).single();
  if(!p||!p.is_active||!p.role){
   $("view").innerHTML='<div class="panel login"><h2>Waiting for approval</h2><p>Your account is not active yet. Ask the Punong Barangay to give you a role.</p><button class="btn" id="out">Sign out</button></div>';return}
- me=p;tab=tabsFor(p.role)[0];draw();
+ me=p;SH=null;tab=tabsFor(p.role)[0];draw();
 }
 function range(){const [y,m]=MONTH.split("-").map(Number),n=new Date(y,m,1);return[MONTH+"-01",n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0")+"-01"]}
 async function report(){
