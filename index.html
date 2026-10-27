@@ -75,6 +75,7 @@ dialog{max-height:92vh;overflow:auto}
 .cert{position:relative;overflow:hidden}
 .cert .wm{position:absolute;top:50%;left:50%;width:62%;transform:translate(-50%,-50%);opacity:.12;z-index:0;pointer-events:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .cert>*:not(.wm){position:relative;z-index:1}
+.ic.ok{background:#D8F3EC;color:#0B5A4D;border:1px solid #9ADBC9}
 @page{size:A4;margin:16mm}
 @media print{body::before{display:none}header,main,dialog{display:none!important}body{background:#fff}#cert{display:block!important}.cert{font-size:12pt;min-width:0}}
 </style>
@@ -102,7 +103,7 @@ const BST=[["open","Open"],["mediation","Mediation"],["settled","Settled"],["ref
 let me=null,tab=null,PU=[],RES=[],ROWS={},SH=null,IMP=[],RQ="",RP=0,HQ="",HP=0,QQ="",QP=0,UNPAID=[["","— none —"]],MONTH=new Date().toISOString().slice(0,7);
 const CFG={
  residents:{n:"resident",f:()=>[["full_name","Full name","text"],["birthdate","Birthdate","date","opt"],["sex","Sex","select",[["M","Male"],["F","Female"]]],["purok_id","Purok","select",PU],["sector","Sector (optional)","text","opt"]]},
- requests:{n:"request",x:()=>[["resident_id","Resident","person"]],f:e=>[["type","Type","select",TYPES]].concat(e?[["status","Status","select",opt(Object.keys(NEXT).concat("released"))]]:[])},
+ requests:{n:"request",x:()=>[["resident_id","Resident","person"]],f:()=>[["type","Type","select",TYPES]]},
  blotter:{n:"blotter case",f:()=>[["case_no","Case no.","text"],["complainant_name","Complainant","text"],["respondent_name","Respondent","text"],["respondent_address","Respondent’s address","text","opt"],["incident","Complaint / incident","text"],["hearing_date","Hearing date","date","opt"],["hearing_time","Hearing time","time","opt"],["status","Status","select",BST]]},
  payments:{n:"receipt",f:()=>[["or_no","OR no.","text"],["payer_name","Payer","text"],["item","Item","text"],["amount","Amount","number"],["request_ref","Linked request (optional)","select",UNPAID,"opt"]]},
  expenses:{n:"expense",f:()=>[["description","Description","text"],["amount","Amount","number"]]},
@@ -129,23 +130,33 @@ const searchForm=(n,v,clr)=>'<form class="sf" data-f="'+n+'"><input name="q" pla
 const PS=10;
 function pager(tot,p,k){const from=tot?p*PS+1:0,to=Math.min(tot,p*PS+PS);return'<div class="acts" style="margin-top:10px;align-items:center;flex-wrap:wrap"><button class="btn ghost" data-'+k+'="-1"'+(p?"":" disabled")+'>Previous</button><button class="btn ghost" data-'+k+'="1"'+(to>=tot?" disabled":"")+'>Next</button><span class="note">Showing '+from+'–'+to+' of '+tot+'</span></div>'}
 async function reqQuery(){
- let q=sb.from("requests").select("id,ref_no,type,status,residents(full_name,birthdate,sex,puroks(name))",{count:"exact"}).order("requested_at",{ascending:false});
+ let q=sb.from("requests").select("id,ref_no,type,status,approved_at,residents(full_name,birthdate,sex,puroks(name))",{count:"exact"}).order("requested_at",{ascending:false});
  if(QQ){const t=QQ.replace(/[%_,()*]/g,""),m=await sb.from("residents").select("id").ilike("full_name",lk(t)).limit(100),ids=(m.data||[]).map(x=>x.id);
   q=ids.length?q.or("ref_no.ilike.*"+t+"*,resident_id.in.("+ids.join(",")+")"):q.ilike("ref_no","%"+t+"%")}
  return q.range(QP*PS,QP*PS+PS-1)}
 function resQuery(){let q=sb.from("residents").select("id,full_name,birthdate,sex,sector,purok_id,puroks(name)",{count:"exact"}).order("full_name");if(RQ)q=q.ilike("full_name",lk(RQ));return q.range(RP*PS,RP*PS+PS-1)}
 async function namesFor(ids){const out={};for(let i=0;i<ids.length;i+=80){const r=await sb.from("residents_basic").select("id,full_name").in("id",ids.slice(i,i+80));(r.data||[]).forEach(x=>{out[x.id]=x.full_name})}return out}
+const abtn=(id,to,l)=>'<button class="ic'+(to==="approved"?" ok":"")+'" data-adv="'+id+'" data-to="'+to+'">'+l+'</button>';
+function advBtns(x,w){
+ if(w&&x.status==="received")return abtn(x.id,"verified","Mark verified");
+ if(w&&x.status==="approved")return abtn(x.id,"released","Mark released");
+ if(me.role==="captain"&&x.status==="verified")return abtn(x.id,"approved","Approve")+abtn(x.id,"received","Return");
+ if(w&&x.status==="verified")return'<span class="note">Waiting for the Punong Barangay</span>';
+ return""}
+function apHTML(a){
+ a=a||[];
+ return'<div class="panel"><h2>Waiting for your approval ('+a.length+')</h2>'+(a.length?tbl(["Ref","Resident","Request","Date",""],a.map(x=>[x.ref_no,x.residents?.full_name,x.type,when(x.requested_at),{h:abtn(x.id,"approved","Approve")+abtn(x.id,"received","Return")}])):'<p class="note">Nothing is waiting for approval.</p>')+'</div>'}
 const V={
 async dash(){
  const [ms,ne]=range();
- const [rs,q,p,e,h,bl]=await Promise.all([sb.from("residents").select("id",{count:"exact",head:true}),sb.from("requests").select("status").gte("requested_at",ms).lt("requested_at",ne),sb.from("payments").select("amount").gte("paid_at",ms).lt("paid_at",ne),sb.from("expenses").select("amount").gte("spent_at",ms).lt("spent_at",ne),sb.from("health_records").select("id").gte("visit_date",ms).lt("visit_date",ne),sb.from("blotter").select("case_no,complainant_name,respondent_name,hearing_date,hearing_time,status").gte("hearing_date",todayStr()).limit(100)]);
+ const [rs,q,p,e,h,bl,ap]=await Promise.all([sb.from("residents").select("id",{count:"exact",head:true}),sb.from("requests").select("status").gte("requested_at",ms).lt("requested_at",ne),sb.from("payments").select("amount").gte("paid_at",ms).lt("paid_at",ne),sb.from("expenses").select("amount").gte("spent_at",ms).lt("spent_at",ne),sb.from("health_records").select("id").gte("visit_date",ms).lt("visit_date",ne),sb.from("blotter").select("case_no,complainant_name,respondent_name,hearing_date,hearing_time,status").gte("hearing_date",todayStr()).limit(100),sb.from("requests").select("id,ref_no,type,requested_at,residents(full_name)").eq("status","verified").order("requested_at").limit(20)]);
  const sum=a=>(a.data||[]).reduce((t,x)=>t+ +x.amount,0),tp=sum(p),te=sum(e),by={},st={};
  const pk=await sb.from("puroks").select("id,name").order("name"),pc=await Promise.all((pk.data||[]).map(x=>sb.from("residents").select("id",{count:"exact",head:true}).eq("purok_id",x.id)));(pk.data||[]).forEach((x,i)=>{by[x.name]=pc[i].count||0});
  (q.data||[]).forEach(x=>{st[x.status]=(st[x.status]||0)+1});
  const mx=Math.max(1,...Object.values(by));
  return '<div class="panel"><h2>Monthly overview</h2><div class="acts" style="flex-wrap:wrap;align-items:end"><label>Month<input type="month" id="mo" value="'+MONTH+'"></label><button class="btn" data-report>Download Excel report</button></div></div>'+
  '<div class="grid"><div class="stat"><b>'+(rs.count||0)+'</b><span>Residents</span></div><div class="stat"><b>'+(q.data||[]).length+'</b><span>Requests this month</span></div><div class="stat"><b>'+(h.data||[]).length+'</b><span>Health visits</span></div><div class="stat"><b>'+peso(tp)+'</b><span>Collected</span></div><div class="stat"><b>'+peso(te)+'</b><span>Spent</span></div><div class="stat"><b>'+peso(tp-te)+'</b><span>Balance</span></div></div>'+
- upHTML(upcoming(bl.data))+'<div class="panel"><h2>Residents per purok</h2>'+(Object.keys(by).sort().map(n=>'<div class="bar"><span>'+esc(n)+'</span><i style="width:'+Math.max(2,by[n]/mx*100)+'%"></i><em>'+by[n]+'</em></div>').join("")||'<p class="note">No residents yet.</p>')+'</div>'+
+ apHTML(ap.data)+upHTML(upcoming(bl.data))+'<div class="panel"><h2>Residents per purok</h2>'+(Object.keys(by).sort().map(n=>'<div class="bar"><span>'+esc(n)+'</span><i style="width:'+Math.max(2,by[n]/mx*100)+'%"></i><em>'+by[n]+'</em></div>').join("")||'<p class="note">No residents yet.</p>')+'</div>'+
  '<div class="panel"><h2>Requests this month</h2>'+(Object.keys(st).map(k=>'<span class="chip '+k+'" style="margin-right:6px">'+k+': '+st[k]+'</span>').join("")||'<p class="note">None yet.</p>')+'</div>'},
 async users(){
  const {data:u,error}=await sb.from("user_overview").select("*").order("full_name");
@@ -163,7 +174,7 @@ async records(){
  keep("residents",r.data);keep("requests",q.data);keep("blotter",b.data);
  return '<div class="grid"><div class="stat"><b>'+(r.count||0)+'</b><span>'+(RQ?"Matching residents":"Residents")+'</span></div><div class="stat"><b>'+(oc.count||0)+'</b><span>Open requests</span></div><div class="stat"><b>'+(b.data||[]).filter(x=>x.status==="open").length+'</b><span>Open blotter cases</span></div></div>'+
  '<div class="panel"><h2>Residents</h2>'+addForm("residents",w,"Add resident")+(w?'<div class="acts" style="margin-bottom:10px;flex-wrap:wrap"><label class="btn ghost" style="cursor:pointer">Import from Excel / CSV<input id="xl" type="file" accept=".xlsx,.xls,.csv" hidden></label><button class="btn ghost" data-tpl>Download template</button></div>':"")+searchForm("rsearch",RQ,"rclear")+tbl(["Name","Birthdate","Sex","Purok","Sector",""],(r.data||[]).map(x=>[x.full_name,x.birthdate,x.sex,x.puroks?.name,x.sector,{h:act("residents",x.id,w)}]),"rb")+pager(r.count||0,RP,"rpage")+'</div>'+
- '<div class="panel"><h2>Certificate requests</h2>'+addForm("requests",w,"New request")+searchForm("qsearch",QQ,"qclear")+tbl(["Ref","Resident","Request","Status",""],(q.data||[]).map(x=>[x.ref_no,x.residents?.full_name,x.type,chip(x.status),{h:(["approved","released"].includes(x.status)&&(w||me.role==="captain")?'<button class="ic" data-print="'+x.id+'">Print</button>':"")+(w&&NEXT[x.status]?'<button class="ic" data-adv="'+x.id+'" data-to="'+NEXT[x.status]+'">Mark '+NEXT[x.status]+'</button>':"")+act("requests",x.id,w)}]))+pager(q.count||0,QP,"qpage")+'</div>'+
+ '<div class="panel"><h2>Certificate requests</h2>'+addForm("requests",w,"New request")+searchForm("qsearch",QQ,"qclear")+tbl(["Ref","Resident","Request","Status","Approved on",""],(q.data||[]).map(x=>[x.ref_no,x.residents?.full_name,x.type,chip(x.status),x.approved_at?when(x.approved_at):"",{h:(["approved","released"].includes(x.status)&&(w||me.role==="captain")?'<button class="ic" data-print="'+x.id+'">Print</button>':"")+advBtns(x,w)+act("requests",x.id,w&&!["approved","released"].includes(x.status))}]))+pager(q.count||0,QP,"qpage")+'</div>'+
  ''+upHTML(upcoming(b.data))+'<div class="panel"><h2>Blotter</h2>'+addForm("blotter",w,"Add case")+tbl(["Case","Complainant","Respondent","Incident","Hearing","Status",""],(b.data||[]).map(x=>[x.case_no,x.complainant_name,x.respondent_name,x.incident,x.hearing_date?x.hearing_date+(x.hearing_time?" "+x.hearing_time:""):"",x.status,{h:((w||me.role==="captain")?'<button class="ic" data-summ="'+x.id+'">Documents</button>':"")+act("blotter",x.id,w)}]))+'</div>'},
 async finance(){
  const w=me.role==="treasurer";
@@ -254,7 +265,7 @@ function certHTML(r,purpose){
   "Business clearance":"This is to certify that "+who+home+", is granted clearance by this office to operate a business within this barangay, subject to existing laws and ordinances.</p><p>This clearance is issued upon the request of the above-named person for "+pu+"."
  };
  const d=new Date();
- return '<div class="cert">'+WM+'<div class="ch">Republic of the Philippines<br>Province of Cebu<br>Municipality of Santa Fe<br><b>BARANGAY TALISAY</b><br><small>OFFICE OF THE PUNONG BARANGAY</small></div><h2 class="ct">'+esc(TITLES[r.type]||r.type.toUpperCase())+'</h2><p class="n"><b>TO WHOM IT MAY CONCERN:</b></p><p>'+(BODY[r.type]||"")+'</p><p>Issued this '+ord(d.getDate())+' day of '+MONTHS[d.getMonth()]+', '+d.getFullYear()+' at Barangay Talisay, Santa Fe, Cebu, Philippines.</p><div class="sig"><b>HON. '+esc(PB)+'</b><br>Punong Barangay</div><div class="cf">'+qr(r,d)+'Ref. No.: '+esc(r.ref_no)+'<br>O.R. No.: '+(r._or?esc(r._or.or_no):"____________")+' &nbsp; Amount paid: '+(r._or?peso(r._or.amount):"____________")+'<br>Prepared by: '+esc(me.full_name)+'<br><i>Not valid without the official dry seal.</i></div></div>'}
+ return '<div class="cert">'+WM+'<div class="ch">Republic of the Philippines<br>Province of Cebu<br>Municipality of Santa Fe<br><b>BARANGAY TALISAY</b><br><small>OFFICE OF THE PUNONG BARANGAY</small></div><h2 class="ct">'+esc(TITLES[r.type]||r.type.toUpperCase())+'</h2><p class="n"><b>TO WHOM IT MAY CONCERN:</b></p><p>'+(BODY[r.type]||"")+'</p><p>Issued this '+ord(d.getDate())+' day of '+MONTHS[d.getMonth()]+', '+d.getFullYear()+' at Barangay Talisay, Santa Fe, Cebu, Philippines.</p><div class="sig"><b>HON. '+esc(PB)+'</b><br>Punong Barangay</div><div class="cf">'+qr(r,d)+'Ref. No.: '+esc(r.ref_no)+'<br>O.R. No.: '+(r._or?esc(r._or.or_no):"____________")+' &nbsp; Amount paid: '+(r._or?peso(r._or.amount):"____________")+'<br>Prepared by: '+esc(me.full_name)+(r.approved_at?'<br>Approved by the Punong Barangay on '+new Date(r.approved_at).toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"}):"")+'<br><i>Not valid without the official dry seal.</i></div></div>'}
 async function openPrint(id){
  const r=ROWS.requests[id];if(!r)return;
  const x=await sb.rpc("receipt_for",{p_ref:r.ref_no});r._or=(x.data&&x.data[0])||null;
@@ -355,7 +366,7 @@ document.addEventListener("click",async e=>{
  if(b.dataset.del)return openDel(...b.dataset.del.split("|"));
  if(b.id==="out"){await sb.rpc("log_event",{p_action:"SIGN_OUT"});await sb.auth.signOut();say("");return loginScreen()}
  if(b.dataset.t){tab=b.dataset.t;say("");sb.rpc("log_event",{p_action:"VIEW",p_detail:MODS[tab]});return draw()}
- if(b.dataset.adv){if(ok(await sb.from("requests").update({status:b.dataset.to}).eq("id",b.dataset.adv).select()))draw();return}
+ if(b.dataset.adv){if(ok(await sb.from("requests").update({status:b.dataset.to}).eq("id",b.dataset.adv).select())){say(b.dataset.to==="approved"?"Approved.":"Updated.",1);draw()}return}
  if(b.dataset.save){const id=b.dataset.save,role=document.querySelector('[data-role="'+id+'"]').value||null,a=document.querySelector('[data-act="'+id+'"]').checked;
   if(a&&!role)return say("Choose a role before activating this account.");
   if(ok(await sb.from("profiles").update({role,is_active:a}).eq("id",id).select())){sb.rpc("log_event",{p_action:"ROLE_CHANGE",p_detail:"Account "+id+" set to "+(role||"none")+(a?", active":", inactive")});say("Account saved.",1);draw()}}
