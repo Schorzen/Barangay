@@ -80,6 +80,7 @@ dialog{max-height:92vh;overflow:auto}
 .cert .signimg{position:absolute;left:50%;top:-62px;transform:translateX(-50%);height:84px;width:auto;max-width:90%;z-index:2;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .cert img{-webkit-user-drag:none;user-select:none;-webkit-touch-callout:none}
 .cert .signph{position:absolute;left:50%;top:-44px;transform:translateX(-50%);font:italic .8em Georgia,serif;color:#888;border:1px dashed #bbb;padding:4px 10px;white-space:nowrap}
+.vrow{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding:8px 0;text-align:left}
 @page{size:A4;margin:16mm}
 @media print{body::before{display:none}header,main,dialog{display:none!important}body{background:#fff}#cert{display:block!important}.cert{font-size:12pt;min-width:0}}
 </style>
@@ -134,7 +135,7 @@ const searchForm=(n,v,clr)=>'<form class="sf" data-f="'+n+'"><input name="q" pla
 const PS=10;
 function pager(tot,p,k){const from=tot?p*PS+1:0,to=Math.min(tot,p*PS+PS);return'<div class="acts" style="margin-top:10px;align-items:center;flex-wrap:wrap"><button class="btn ghost" data-'+k+'="-1"'+(p?"":" disabled")+'>Previous</button><button class="btn ghost" data-'+k+'="1"'+(to>=tot?" disabled":"")+'>Next</button><span class="note">Showing '+from+'–'+to+' of '+tot+'</span></div>'}
 async function reqQuery(){
- let q=sb.from("requests").select("id,ref_no,type,status,approved_at,residents(full_name,birthdate,sex,puroks(name))",{count:"exact"}).order("requested_at",{ascending:false});
+ let q=sb.from("requests").select("id,ref_no,type,status,approved_at,verify_token,residents(full_name,birthdate,sex,puroks(name))",{count:"exact"}).order("requested_at",{ascending:false});
  if(QQ){const t=QQ.replace(/[%_,()*]/g,""),m=await sb.from("residents").select("id").ilike("full_name",lk(t)).limit(100),ids=(m.data||[]).map(x=>x.id);
   q=ids.length?q.or("ref_no.ilike.*"+t+"*,resident_id.in.("+ids.join(",")+")"):q.ilike("ref_no","%"+t+"%")}
  return q.range(QP*PS,QP*PS+PS-1)}
@@ -215,7 +216,17 @@ function loginScreen(){
  $("who").innerHTML="";$("nav").innerHTML="";me=null;SH=null;SIG=null;
  $("view").innerHTML='<div class="panel login"><h2>Staff sign-in</h2><p class="note">Use the account the Punong Barangay created for you.</p><form class="frm" data-f="login"><label>Email<input name="email" type="email" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button class="btn">Sign in</button></form></div>';
 }
+async function verifyScreen(tok){
+ $("who").innerHTML="";$("nav").innerHTML="";me=null;
+ $("view").innerHTML='<div class="panel login"><p class="note">Checking certificate…</p></div>';
+ const r=await sb.rpc("verify_certificate",{p_token:tok}),x=r.data&&r.data[0];
+ const good=x&&["approved","released"].includes(x.status)&&x.approved_at,row=(a,b)=>'<div class="vrow"><span class="note">'+a+'</span><b>'+esc(b)+'</b></div>';
+ $("view").innerHTML='<div class="panel login" style="text-align:center">'+(good?
+  '<h2 style="color:#0F7A69">✔ Valid certificate</h2><p>This certificate was approved by the Punong Barangay of Barangay Talisay, Santa Fe, Cebu.</p>'+row("Reference no.",x.ref_no)+row("Certificate",x.cert_type)+row("Issued to",x.holder)+row("Approved on",new Date(x.approved_at).toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"}))+'<p class="note" style="margin-top:12px">Compare these details with the paper. If they do not match, do not accept the certificate and contact the barangay hall.</p>'
+  :'<h2 style="color:#B93A24">✖ Not valid</h2><p>No approved certificate matches this code. It may be fake, cancelled, or not yet approved. Please contact the Barangay Talisay hall.</p>')+
+  '<p class="note"><a href="'+location.pathname+'">Staff sign-in</a></p></div>'}
 async function boot(){
+ const vm=location.hash.match(/^#verify=([0-9a-f-]{36})$/i);if(vm)return verifyScreen(vm[1]);
  const {data:{session}}=await sb.auth.getSession();
  if(!session)return loginScreen();
  const {data:p}=await sb.from("profiles").select("*").eq("id",session.user.id).single();
@@ -250,7 +261,7 @@ async function parseImport(file){
 async function doImport(){
  for(let i=0;i<IMP.length;i+=200){const r=await sb.from("residents").insert(IMP.slice(i,i+200));if(r.error){dlg.close();return say(r.error.message)}}
  const n=IMP.length;IMP=[];dlg.close();say("Imported "+n+" residents.",1);draw()}
-function qr(r,d){if(typeof qrcode==="undefined")return"";try{const q=qrcode(0,"M");q.addData("BARANGAY TALISAY, SANTA FE, CEBU | "+r.ref_no+" | "+r.type+" | "+(r.residents?.full_name||"")+" | "+d.toISOString().slice(0,10));q.make();return'<img class="qr" alt="QR code" src="'+q.createDataURL(4,0)+'">'}catch(e){return""}}
+function qr(r,d){if(typeof qrcode==="undefined")return"";try{const q=qrcode(0,"M");q.addData(r.verify_token?location.origin+location.pathname+"#verify="+r.verify_token:"BARANGAY TALISAY, SANTA FE, CEBU | "+r.ref_no+" | "+r.type);q.make();return'<img class="qr" alt="QR code" src="'+q.createDataURL(4,0)+'">'}catch(e){return""}}
 let SIG=null,SIGERR="";
 async function getSig(){if(SIG!==null)return SIG;try{const r=await sb.storage.from("signatures").download("captain-signature.png");if(r.error)throw r.error;SIG=await new Promise((res,rej)=>{const f=new FileReader();f.onload=()=>res(f.result);f.onerror=rej;f.readAsDataURL(r.data)})}catch(e){SIG=null;let why="unknown reason";
   try{const l=await sb.storage.from("signatures").list();
@@ -276,7 +287,7 @@ function certHTML(r,purpose,pv){
   "Business clearance":"This is to certify that "+who+home+", is granted clearance by this office to operate a business within this barangay, subject to existing laws and ordinances.</p><p>This clearance is issued upon the request of the above-named person for "+pu+"."
  };
  const d=new Date();
- return '<div class="cert">'+WM+'<div class="ch">Republic of the Philippines<br>Province of Cebu<br>Municipality of Santa Fe<br><b>BARANGAY TALISAY</b><br><small>OFFICE OF THE PUNONG BARANGAY</small></div><h2 class="ct">'+esc(TITLES[r.type]||r.type.toUpperCase())+'</h2><p class="n"><b>TO WHOM IT MAY CONCERN:</b></p><p>'+(BODY[r.type]||"")+'</p><p>Issued this '+ord(d.getDate())+' day of '+MONTHS[d.getMonth()]+', '+d.getFullYear()+' at Barangay Talisay, Santa Fe, Cebu, Philippines.</p><div class="sig'+(r._sig?' hs':'')+'">'+(r._sig?(pv?'<span class="signph">Signature prints here</span>':'<img class="signimg" alt="" draggable="false" src="'+r._sig+'">'):'')+'<b>HON. '+esc(PB)+'</b><br>Punong Barangay</div><div class="cf">'+qr(r,d)+'Ref. No.: '+esc(r.ref_no)+'<br>O.R. No.: '+(r._or?esc(r._or.or_no):"____________")+' &nbsp; Amount paid: '+(r._or?peso(r._or.amount):"____________")+'<br>Prepared by: '+esc(me.full_name)+(r.approved_at?'<br>Approved by the Punong Barangay on '+new Date(r.approved_at).toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"}):"")+'<br><i>Not valid without the official dry seal.</i></div></div>'}
+ return '<div class="cert">'+WM+'<div class="ch">Republic of the Philippines<br>Province of Cebu<br>Municipality of Santa Fe<br><b>BARANGAY TALISAY</b><br><small>OFFICE OF THE PUNONG BARANGAY</small></div><h2 class="ct">'+esc(TITLES[r.type]||r.type.toUpperCase())+'</h2><p class="n"><b>TO WHOM IT MAY CONCERN:</b></p><p>'+(BODY[r.type]||"")+'</p><p>Issued this '+ord(d.getDate())+' day of '+MONTHS[d.getMonth()]+', '+d.getFullYear()+' at Barangay Talisay, Santa Fe, Cebu, Philippines.</p><div class="sig'+(r._sig?' hs':'')+'">'+(r._sig?(pv?'<span class="signph">Signature prints here</span>':'<img class="signimg" alt="" draggable="false" src="'+r._sig+'">'):'')+'<b>HON. '+esc(PB)+'</b><br>Punong Barangay</div><div class="cf">'+qr(r,d)+'Ref. No.: '+esc(r.ref_no)+'<br>O.R. No.: '+(r._or?esc(r._or.or_no):"____________")+' &nbsp; Amount paid: '+(r._or?peso(r._or.amount):"____________")+'<br>Prepared by: '+esc(me.full_name)+(r.approved_at?'<br>Approved by the Punong Barangay on '+new Date(r.approved_at).toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"}):"")+'<br><i>Not valid without the official dry seal.</i><br>Scan the QR code to check that this certificate is genuine.</div></div>'}
 async function openPrint(id){
  const r=ROWS.requests[id];if(!r)return;
  const x=await sb.rpc("receipt_for",{p_ref:r.ref_no});r._or=(x.data&&x.data[0])||null;r._sig=["approved","released"].includes(r.status)?await getSig():"";
