@@ -135,7 +135,7 @@ function pre(t,o){const x={...o};["birthdate","sector","status","notes","request
 
 function ageOf(bd){if(!bd)return"";const b=new Date(bd+"T00:00:00"),t=new Date();let a=t.getFullYear()-b.getFullYear();if(t<new Date(t.getFullYear(),b.getMonth(),b.getDate()))a--;return a}
 function seniorCut(){const d=new Date();d.setFullYear(d.getFullYear()-60);return ymd(d)}
-const seniorBar=()=>'<div class="acts" style="margin-bottom:10px;flex-wrap:wrap"><button class="btn ghost" data-srtoggle>'+(SR?"Show all residents":"Show senior citizens (60+)")+'</button><button class="btn ghost" data-srexcel>Download senior citizens (Excel)</button></div>';
+const seniorBar=()=>'<div class="acts" style="margin-bottom:10px;flex-wrap:wrap"><button class="btn ghost" data-srtoggle>'+(SR?"Show all residents":"Show senior citizens (60+)")+'</button><button class="btn ghost" data-srexcel>Download senior citizens (Excel)</button><button class="btn ghost" data-allexcel>Download all residents (Excel)</button></div>';
 async function exportSeniors(){
  say("Preparing the senior citizens list…");const rows=[];
  for(let i=0;;i+=1000){const r=await sb.from("residents").select("full_name,birthdate,sex,sector,contact,puroks(name)").lte("birthdate",seniorCut()).order("full_name").range(i,i+999);if(r.error)return say(r.error.message);rows.push(...r.data);if(r.data.length<1000)break}
@@ -146,6 +146,26 @@ async function exportSeniors(){
  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(Object.keys(by).sort().map(k=>({Purok:k,"Senior citizens":by[k]}))),"Per purok");
  XLSX.writeFile(wb,"Talisay-senior-citizens-"+todayStr()+".xlsx");
  sb.rpc("log_event",{p_action:"EXPORT",p_detail:"Senior citizens ("+list.length+")"});say("Downloaded "+list.length+" senior citizens.",1)}
+const reqExportBar=()=>'<div class="acts" style="margin-bottom:10px;flex-wrap:wrap;align-items:center"><select id="rqper" aria-label="Period" style="width:auto"><option value="month">This month</option><option value="year">This year</option><option value="all">All time</option></select><button class="btn ghost" data-reqexcel>Download requests (Excel)</button></div>';
+async function allRows(make){const out=[];for(let i=0;;i+=1000){const r=await make().range(i,i+999);if(r.error){say(r.error.message);return null}out.push(...r.data);if(r.data.length<1000)return out}}
+function saveXlsx(sheets,name){const wb=XLSX.utils.book_new();sheets.forEach(([n,rows,w])=>{const ws=XLSX.utils.json_to_sheet(rows.length?rows:[{Note:"No records"}]);if(w)ws["!cols"]=w.map(x=>({wch:x}));XLSX.utils.book_append_sheet(wb,ws,n)});XLSX.writeFile(wb,name)}
+const count=(a,f)=>{const m={};a.forEach(x=>{const k=f(x)||"None";m[k]=(m[k]||0)+1});return Object.keys(m).sort().map(k=>[k,m[k]])};
+async function exportResidents(){
+ if(!confirm("This file contains personal information of ALL residents. Download it and keep it safe?"))return;
+ say("Preparing the residents list…");
+ const rows=await allRows(()=>sb.from("residents").select("full_name,birthdate,sex,sector,is_voter,contact,puroks(name)").order("full_name"));if(!rows)return;
+ const list=rows.map(x=>{const a=ageOf(x.birthdate);return{Name:x.full_name,Birthdate:x.birthdate||"",Age:a,Sex:x.sex||"",Purok:x.puroks?.name||"",Sector:x.sector||"","Senior citizen":a!==""&&a>=60?"Yes":"No",Voter:x.is_voter?"Yes":"No",Contact:x.contact||""}});
+ saveXlsx([["Residents",list,[32,12,6,6,18,22,14,8,16]],["Per purok",count(list,x=>x.Purok).map(k=>({Purok:k[0],Residents:k[1]}))]],"Talisay-residents-"+todayStr()+".xlsx");
+ sb.rpc("log_event",{p_action:"EXPORT",p_detail:"All residents ("+list.length+")"});say("Downloaded "+list.length+" residents.",1)}
+async function exportRequests(){
+ const per=$("rqper").value,t=new Date();let a=null,b=null,tag="all-time";
+ if(per==="month"){a=new Date(t.getFullYear(),t.getMonth(),1);b=new Date(t.getFullYear(),t.getMonth()+1,1);tag=ymd(a).slice(0,7)}
+ else if(per==="year"){a=new Date(t.getFullYear(),0,1);b=new Date(t.getFullYear()+1,0,1);tag=String(t.getFullYear())}
+ say("Preparing the requests list…");
+ const rows=await allRows(()=>{let q=sb.from("requests").select("ref_no,type,status,requested_at,approved_at,residents(full_name,puroks(name))").order("requested_at");if(a)q=q.gte("requested_at",a.toISOString()).lt("requested_at",b.toISOString());return q});if(!rows)return;
+ const list=rows.map(x=>({"Ref no.":x.ref_no,Resident:x.residents?.full_name||"",Purok:x.residents?.puroks?.name||"",Certificate:x.type,Status:x.status,"Date requested":ymd(new Date(x.requested_at)),"Approved on":x.approved_at?ymd(new Date(x.approved_at)):""}));
+ saveXlsx([["Requests",list,[16,30,18,26,12,15,14]],["By certificate",count(list,x=>x.Certificate).map(k=>({Certificate:k[0],Total:k[1]}))],["By status",count(list,x=>x.Status).map(k=>({Status:k[0],Total:k[1]}))]],"Talisay-requests-"+tag+".xlsx");
+ sb.rpc("log_event",{p_action:"EXPORT",p_detail:"Requests "+tag+" ("+list.length+")"});say("Downloaded "+list.length+" requests.",1)}
 const lk=q=>"%"+q.replace(/[%_]/g,"")+"%";
 const searchForm=(n,v,clr)=>'<form class="sf" data-f="'+n+'"><input name="q" placeholder="Search by name…" value="'+esc(v)+'" aria-label="Search"><button class="btn ghost">Search</button>'+(v?'<button type="button" class="btn ghost" data-'+clr+'>Clear</button>':'')+'</form>';
 const PS=10;
@@ -195,7 +215,7 @@ async records(){
  keep("residents",r.data);keep("requests",q.data);keep("blotter",b.data);
  return '<div class="grid"><div class="stat"><b>'+(r.count||0)+'</b><span>'+(RQ?"Matching residents":"Residents")+'</span></div><div class="stat"><b>'+(oc.count||0)+'</b><span>Open requests</span></div><div class="stat"><b>'+(b.data||[]).filter(x=>x.status==="open").length+'</b><span>Open blotter cases</span></div><div class="stat"><b>'+(sc.count||0)+'</b><span>Senior citizens (60+)</span></div></div>'+
  '<div class="panel"><h2>Residents</h2>'+addForm("residents",w,"Add resident")+(w?'<div class="acts" style="margin-bottom:10px;flex-wrap:wrap"><label class="btn ghost" style="cursor:pointer">Import from Excel / CSV<input id="xl" type="file" accept=".xlsx,.xls,.csv" hidden></label><button class="btn ghost" data-tpl>Download template</button></div>':"")+searchForm("rsearch",RQ,"rclear")+seniorBar()+tbl(["Name","Birthdate","Age","Sex","Purok","Sector",""],(r.data||[]).map(x=>[x.full_name,x.birthdate,ageOf(x.birthdate),x.sex,x.puroks?.name,{h:(ageOf(x.birthdate)!==""&&ageOf(x.birthdate)>=60?'<span class="chip approved">Senior</span> ':"")+esc(x.sector||"")},{h:act("residents",x.id,w)}]),"rb")+pager(r.count||0,RP,"rpage")+'</div>'+
- '<div class="panel"><h2>Certificate requests</h2>'+addForm("requests",w,"New request")+searchForm("qsearch",QQ,"qclear")+tbl(["Ref","Resident","Request","Status","Approved on",""],(q.data||[]).map(x=>[x.ref_no,x.residents?.full_name,x.type,chip(x.status),x.approved_at?when(x.approved_at):"",{h:(["approved","released"].includes(x.status)&&(w||me.role==="captain")?'<button class="ic" data-print="'+x.id+'">Print</button>':"")+advBtns(x,w)+act("requests",x.id,w&&!["approved","released"].includes(x.status))}]))+pager(q.count||0,QP,"qpage")+'</div>'+
+ '<div class="panel"><h2>Certificate requests</h2>'+addForm("requests",w,"New request")+searchForm("qsearch",QQ,"qclear")+reqExportBar()+tbl(["Ref","Resident","Request","Status","Approved on",""],(q.data||[]).map(x=>[x.ref_no,x.residents?.full_name,x.type,chip(x.status),x.approved_at?when(x.approved_at):"",{h:(["approved","released"].includes(x.status)&&(w||me.role==="captain")?'<button class="ic" data-print="'+x.id+'">Print</button>':"")+advBtns(x,w)+act("requests",x.id,w&&!["approved","released"].includes(x.status))}]))+pager(q.count||0,QP,"qpage")+'</div>'+
  ''+upHTML(upcoming(b.data))+'<div class="panel"><h2>Blotter</h2>'+addForm("blotter",w,"Add case")+tbl(["Case","Complainant","Respondent","Incident","Hearing","Status",""],(b.data||[]).map(x=>[x.case_no,x.complainant_name,x.respondent_name,x.incident,x.hearing_date?x.hearing_date+(x.hearing_time?" "+x.hearing_time:""):"",x.status,{h:((w||me.role==="captain")?'<button class="ic" data-summ="'+x.id+'">Documents</button>':"")+act("blotter",x.id,w)}]))+'</div>'},
 async finance(){
  const w=me.role==="treasurer";
@@ -399,6 +419,8 @@ document.addEventListener("click",async e=>{
  if(b.dataset.pick){const l=b.closest("label");l.querySelector("[data-pk]").value=b.dataset.name;l.querySelector("input[type=hidden]").value=b.dataset.pick;l.querySelector(".pkres").innerHTML="";return}
  if("srtoggle" in b.dataset){SR=!SR;RP=0;return draw()}
  if("srexcel" in b.dataset)return exportSeniors();
+ if("allexcel" in b.dataset)return exportResidents();
+ if("reqexcel" in b.dataset)return exportRequests();
  if(b.dataset.rpage){RP=Math.max(0,RP+ +b.dataset.rpage);return draw()}
  if(b.dataset.qpage){QP=Math.max(0,QP+ +b.dataset.qpage);return draw()}
  if(b.dataset.hpage){HP=Math.max(0,HP+ +b.dataset.hpage);return draw()}
