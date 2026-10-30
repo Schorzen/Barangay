@@ -157,6 +157,18 @@ async function exportResidents(){
  const list=rows.map(x=>{const a=ageOf(x.birthdate);return{Name:x.full_name,Birthdate:x.birthdate||"",Age:a,Sex:x.sex||"",Purok:x.puroks?.name||"",Sector:x.sector||"","Senior citizen":a!==""&&a>=60?"Yes":"No",Voter:x.is_voter?"Yes":"No",Contact:x.contact||""}});
  saveXlsx([["Residents",list,[32,12,6,6,18,22,14,8,16]],["Per purok",count(list,x=>x.Purok).map(k=>({Purok:k[0],Residents:k[1]}))]],"Talisay-residents-"+todayStr()+".xlsx");
  sb.rpc("log_event",{p_action:"EXPORT",p_detail:"All residents ("+list.length+")"});say("Downloaded "+list.length+" residents.",1)}
+const finBar=()=>'<div class="acts" style="margin-bottom:12px;flex-wrap:wrap;align-items:center"><select id="fnper" aria-label="Period" style="width:auto"><option value="month">This month</option><option value="year">This year</option><option value="all">All time</option></select><button class="btn ghost" data-finexcel>Download receipts and expenses (Excel)</button></div>';
+async function exportFinance(){
+ const per=$("fnper").value,t=new Date();let a=null,b=null,tag="all-time";
+ if(per==="month"){a=new Date(t.getFullYear(),t.getMonth(),1);b=new Date(t.getFullYear(),t.getMonth()+1,1);tag=ymd(a).slice(0,7)}
+ else if(per==="year"){a=new Date(t.getFullYear(),0,1);b=new Date(t.getFullYear()+1,0,1);tag=String(t.getFullYear())}
+ say("Preparing the finance records…");
+ const pr=await allRows(()=>{let q=sb.from("payments").select("or_no,payer_name,item,amount,request_ref,paid_at").order("paid_at");if(a)q=q.gte("paid_at",a.toISOString()).lt("paid_at",b.toISOString());return q});if(!pr)return;
+ const er=await allRows(()=>{let q=sb.from("expenses").select("description,amount,spent_at").order("spent_at");if(a)q=q.gte("spent_at",ymd(a)).lt("spent_at",ymd(b));return q});if(!er)return;
+ const rec=pr.map(x=>({"OR no.":x.or_no,Payer:x.payer_name,Item:x.item,Amount:+x.amount,"Linked request":x.request_ref||"",Date:ymd(new Date(x.paid_at))})),exp=er.map(x=>({Date:x.spent_at,Description:x.description,Amount:+x.amount}));
+ const tp=rec.reduce((n,x)=>n+x.Amount,0),te=exp.reduce((n,x)=>n+x.Amount,0);
+ saveXlsx([["Summary",[{Item:"Barangay",Value:"Talisay, Santa Fe, Cebu"},{Item:"Period",Value:tag},{Item:"Total collected",Value:tp},{Item:"Total spent",Value:te},{Item:"Balance",Value:tp-te},{Item:"Receipts",Value:rec.length},{Item:"Expenses",Value:exp.length}],[22,26]],["Receipts",rec,[14,28,26,12,18,12]],["Expenses",exp,[12,40,12]],["Collections by item",count(rec,x=>x.Item).map(k=>({Item:k[0],Receipts:k[1],Total:rec.filter(x=>(x.Item||"None")===k[0]).reduce((n,x)=>n+x.Amount,0)})),[28,10,14]]],"Talisay-finance-"+tag+".xlsx");
+ sb.rpc("log_event",{p_action:"EXPORT",p_detail:"Finance "+tag+" ("+rec.length+" receipts, "+exp.length+" expenses)"});say("Downloaded "+rec.length+" receipts and "+exp.length+" expenses.",1)}
 async function exportRequests(){
  const per=$("rqper").value,t=new Date();let a=null,b=null,tag="all-time";
  if(per==="month"){a=new Date(t.getFullYear(),t.getMonth(),1);b=new Date(t.getFullYear(),t.getMonth()+1,1);tag=ymd(a).slice(0,7)}
@@ -224,7 +236,7 @@ async finance(){
  keep("payments",p.data);keep("expenses",e.data);
  const tp=(p.data||[]).reduce((s,x)=>s+ +x.amount,0),te=(e.data||[]).reduce((s,x)=>s+ +x.amount,0);
  return '<div class="grid"><div class="stat"><b>'+peso(tp)+'</b><span>Collected (shown)</span></div><div class="stat"><b>'+peso(te)+'</b><span>Spent (shown)</span></div><div class="stat"><b>'+peso(tp-te)+'</b><span>Balance</span></div></div>'+
- '<div class="panel"><h2>Official receipts</h2>'+addForm("payments",w,"Add receipt")+tbl(["OR no.","Payer","Item","Amount","Date","Request",""],(p.data||[]).map(x=>[x.or_no,x.payer_name,x.item,peso(x.amount),when(x.paid_at),x.request_ref||"",{h:act("payments",x.id,w)}]))+'</div>'+
+ '<div class="panel"><h2>Official receipts</h2>'+finBar()+addForm("payments",w,"Add receipt")+tbl(["OR no.","Payer","Item","Amount","Date","Request",""],(p.data||[]).map(x=>[x.or_no,x.payer_name,x.item,peso(x.amount),when(x.paid_at),x.request_ref||"",{h:act("payments",x.id,w)}]))+'</div>'+
  '<div class="panel"><h2>Expenses</h2>'+addForm("expenses",w,"Add expense")+tbl(["Date","Description","Amount",""],(e.data||[]).map(x=>[x.spent_at,x.description,peso(x.amount),{h:act("expenses",x.id,w)}]))+'</div>'},
 async health(){
  const w=me.role==="bhw";let h;
@@ -249,9 +261,16 @@ async function draw(){
  if(fk&&/search$/.test(fk)){const el=document.querySelector('form[data-f="'+fk+'"] input[name="q"]');if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length)}}
 }
 function loginScreen(){
- $("who").innerHTML="";$("nav").innerHTML="";me=null;SH=null;SIG=null;
+ $("who").innerHTML="";$("nav").innerHTML="";me=null;SH=null;SIG=null;stopRealtime();
  $("view").innerHTML='<div class="panel login"><h2>Staff sign-in</h2><p class="note">Use the account the Punong Barangay created for you.</p><form class="frm" data-f="login"><label>Email<input name="email" type="email" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button class="btn">Sign in</button></form></div>';
 }
+let RT=null,RTOK=false,rtT=null;
+function busyNow(){const f=document.activeElement&&document.activeElement.closest?document.activeElement.closest("form[data-f]"):null;return dlg.open||(f&&!/search$/.test(f.dataset.f))}
+async function updateTitle(){let n=0;if(me&&me.role==="captain"){const r=await sb.from("requests").select("id",{count:"exact",head:true}).eq("status","verified");n=r.count||0}document.title=(n?"("+n+") ":"")+"Barangay Talisay Records System"}
+function liveRefresh(){clearTimeout(rtT);rtT=setTimeout(function go(){if(!me)return;if(busyNow()){rtT=setTimeout(go,4000);return}if(["dash","records"].includes(tab))draw();updateTitle()},800)}
+function startRealtime(){if(RT||!me)return;RT=sb.channel("requests-live").on("postgres_changes",{event:"*",schema:"public",table:"requests"},p=>{if(me&&p.eventType!=="DELETE"&&p.new){const was=p.old&&p.old.status;if(me.role==="captain"&&p.new.status==="verified"&&was!=="verified")say("A request is waiting for your approval.",1);if(me.role==="secretary"&&p.new.status==="approved"&&was!=="approved")say("A request was approved. You can print it now.",1);if(me.role==="secretary"&&p.new.status==="received"&&was==="verified")say("The Captain returned a request for correction.",1)}liveRefresh()}).subscribe(st=>{RTOK=st==="SUBSCRIBED"})}
+function stopRealtime(){if(RT){sb.removeChannel(RT);RT=null}RTOK=false;document.title="Barangay Talisay Records System"}
+setInterval(()=>{if(me&&!RTOK)liveRefresh()},60000);
 async function verifyScreen(tok){
  $("who").innerHTML="";$("nav").innerHTML="";me=null;
  $("view").innerHTML='<div class="panel login"><p class="note">Checking certificate…</p></div>';
@@ -268,7 +287,7 @@ async function boot(){
  const {data:p}=await sb.from("profiles").select("*").eq("id",session.user.id).single();
  if(!p||!p.is_active||!p.role){
   $("view").innerHTML='<div class="panel login"><h2>Waiting for approval</h2><p>Your account is not active yet. Ask the Punong Barangay to give you a role.</p><button class="btn" id="out">Sign out</button></div>';return}
- me=p;SH=null;tab=tabsFor(p.role)[0];draw();
+ me=p;SH=null;tab=tabsFor(p.role)[0];draw();startRealtime();updateTitle();
 }
 function range(){const [y,m]=MONTH.split("-").map(Number),n=new Date(y,m,1);return[MONTH+"-01",n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0")+"-01"]}
 async function report(){
@@ -421,6 +440,7 @@ document.addEventListener("click",async e=>{
  if("srexcel" in b.dataset)return exportSeniors();
  if("allexcel" in b.dataset)return exportResidents();
  if("reqexcel" in b.dataset)return exportRequests();
+ if("finexcel" in b.dataset)return exportFinance();
  if(b.dataset.rpage){RP=Math.max(0,RP+ +b.dataset.rpage);return draw()}
  if(b.dataset.qpage){QP=Math.max(0,QP+ +b.dataset.qpage);return draw()}
  if(b.dataset.hpage){HP=Math.max(0,HP+ +b.dataset.hpage);return draw()}
