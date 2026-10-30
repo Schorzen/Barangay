@@ -103,19 +103,25 @@ const SB_KEY="sb_publishable_nyThP0h3QcRKGlRiqMinaQ_yNKI2Ej4";
 const sb=supabase.createClient(SB_URL,SB_KEY);
 const $=i=>document.getElementById(i);
 const LABEL={captain:"Punong Barangay",secretary:"Secretary",treasurer:"Treasurer",bhw:"BHW"};
-const MODS={dash:"Dashboard",users:"Users",audit:"Activity log",records:"Records",finance:"Finance",health:"Health"};
+const MODS={dash:"Dashboard",users:"Users",audit:"Activity log",records:"Records",households:"Households",finance:"Finance",health:"Health"};
 const NEXT={received:"verified",verified:"approved",approved:"released"};
 const opt=a=>a.map(x=>[x,x]);
+const YNO=[["false","No"],["true","Yes"]],NS=a=>[["","Not stated"]].concat(opt(a));
+const HMAT=["Concrete","Semi-concrete","Wood","Light materials (nipa, bamboo)","Makeshift"],HOWN=["Owned","Rented","Living with relatives","Informal settler"];
+const WATER=["Own faucet (Level III)","Shared faucet (Level II)","Deep well or pump (Level I)","Spring, river or rain","Water refilling station"];
+const TOILET=["Water-sealed, own","Water-sealed, shared","Open pit","None"],GARB=["Collected by barangay","Composting","Burning","Burying","Other"];
+const FPM=["None","Pills","Injectable","IUD","Implant","Condom","Natural method","Ligation or vasectomy"],PHIL=["All members covered","Some members covered","None covered"];
 const ASL=["Farmer","Fisherman","Farmer and Fisherman"];
 const CSL=["Single","Married","Widowed","Separated","Live-in"];
 const CL="Certificate of common law",FJ="First time jobseeker certification",SP="Solo parent certificate";
 const TYPES=opt(["Barangay clearance","Certificate of indigency","Certificate of residency","Business clearance",CL,FJ,SP]);
 const PROG=opt(["Immunization","Prenatal","Senior check-up","Nutrition","Family planning"]);
 const BST=[["open","Open"],["mediation","Mediation"],["settled","Settled"],["referred","Referred"]];
-let me=null,tab=null,PU=[],RES=[],ROWS={},SH=null,IMP=[],SR=false,PF="",SXF="",GF="",CF="",AF="",RQ="",RP=0,HQ="",HP=0,QQ="",QP=0,UNPAID=[["","— none —"]],MONTH=new Date().toISOString().slice(0,7);
+let me=null,tab=null,PU=[],RES=[],ROWS={},SH=null,IMP=[],HHQ="",HHP=0,HHF="",SR=false,PF="",SXF="",GF="",CF="",AF="",RQ="",RP=0,HQ="",HP=0,QQ="",QP=0,UNPAID=[["","— none —"]],MONTH=new Date().toISOString().slice(0,7);
 const CFG={
  residents:{n:"resident",f:()=>[["full_name","Full name","text"],["birthdate","Birthdate","date","opt"],["sex","Sex","select",[["M","Male"],["F","Female"]]],["civil_status","Civil status","select",[["","Not stated"]].concat(opt(CSL)),"opt"],["association","Association (optional)","select",[["","None"]].concat(opt(ASL)),"opt"],["purok_id","Purok","select",PU],["sector","Sector (optional)","text","opt"],["is_pwd","PWD","select",[["false","No"],["true","Yes"]]],["is_solo_parent","Solo parent","select",[["false","No"],["true","Yes"]]],["is_4ps","4Ps beneficiary","select",[["false","No"],["true","Yes"]]]]},
  requests:{n:"request",x:()=>[["resident_id","Resident","person"]],f:()=>[["type","Type","select",TYPES],["details","Details: partner’s name (common law) or children (solo parent)","text","opt"]]},
+ households:{n:"household",x:()=>[["head_resident_id","Household head (optional)","person"]],f:()=>[["household_no","Household no. (optional)","text","opt"],["address","House address or landmark","text"],["purok_id","Purok","select",PU],["is_4ps","4Ps household","select",YNO],["housing_material","House materials","select",NS(HMAT),"opt"],["electricity","Electricity","select",NS(["With electricity","Without electricity"]),"opt"],["ownership","House ownership","select",NS(HOWN),"opt"]]},
  blotter:{n:"blotter case",f:()=>[["case_no","Case no.","text"],["complainant_name","Complainant","text"],["respondent_name","Respondent","text"],["respondent_address","Respondent’s address","text","opt"],["incident","Complaint / incident","text"],["hearing_date","Hearing date","date","opt"],["hearing_time","Hearing time","time","opt"],["status","Status","select",BST]]},
  payments:{n:"receipt",f:()=>[["or_no","OR no.","text"],["payer_name","Payer","text"],["item","Item","text"],["amount","Amount","number"],["request_ref","Linked request (optional)","select",UNPAID,"opt"]]},
  expenses:{n:"expense",f:()=>[["description","Description","text"],["amount","Amount","number"]]},
@@ -135,7 +141,7 @@ const act=(t,id,w)=>w?'<button class="ic" data-edit="'+t+'|'+id+'">Edit</button>
 const addForm=(t,w,btn)=>w?form(t,(CFG[t].x?CFG[t].x():[]).concat(CFG[t].f(false)),btn):"";
 function say(t,good){const m=$("msg");m.textContent=t||"";m.className=good?"good":"";m.hidden=!t;if(good)setTimeout(()=>{if(m.textContent===t)m.hidden=true},2500)}
 const ok=r=>{if(r.error){say(r.error.code==="23503"?"This record is linked to other files (for example requests or health records), so it can’t be deleted yet. Remove those first.":r.error.message);return false}if(r.data&&!r.data.length){say("Not allowed, or the record no longer exists.");return false}say("");return true};
-function pre(t,o){const x={...o};["birthdate","sector","status","notes","request_ref","details","civil_status","association","respondent_address","hearing_date","hearing_time"].forEach(k=>{if(k in x&&x[k]==="")x[k]=null});if("amount" in x)x.amount=+x.amount;["is_pwd","is_solo_parent","is_4ps"].forEach(k=>{if(k in x)x[k]=x[k]==="true"});return x}
+function pre(t,o){const x={...o};["birthdate","sector","status","notes","request_ref","details","civil_status","association","head_resident_id","household_no","housing_material","electricity","ownership","respondent_address","hearing_date","hearing_time"].forEach(k=>{if(k in x&&x[k]==="")x[k]=null});if("amount" in x)x.amount=+x.amount;["is_pwd","is_solo_parent","is_4ps"].forEach(k=>{if(k in x)x[k]=x[k]==="true"});return x}
 
 function ageOf(bd){if(!bd)return"";const b=new Date(bd+"T00:00:00"),t=new Date();let a=t.getFullYear()-b.getFullYear();if(t<new Date(t.getFullYear(),b.getMonth(),b.getDate()))a--;return a}
 function seniorCut(){const d=new Date();d.setFullYear(d.getFullYear()-60);return ymd(d)}
@@ -257,6 +263,31 @@ async finance(){
  return '<div class="grid"><div class="stat"><b>'+peso(tp)+'</b><span>Collected (shown)</span></div><div class="stat"><b>'+peso(te)+'</b><span>Spent (shown)</span></div><div class="stat"><b>'+peso(tp-te)+'</b><span>Balance</span></div></div>'+
  '<div class="panel"><h2>Official receipts</h2>'+finBar()+addForm("payments",w,"Add receipt")+tbl(["OR no.","Payer","Item","Amount","Date","Request",""],(p.data||[]).map(x=>[x.or_no,x.payer_name,x.item,peso(x.amount),when(x.paid_at),x.request_ref||"",{h:act("payments",x.id,w)}]))+'</div>'+
  '<div class="panel"><h2>Expenses</h2>'+addForm("expenses",w,"Add expense")+tbl(["Date","Description","Amount",""],(e.data||[]).map(x=>[x.spent_at,x.description,peso(x.amount),{h:act("expenses",x.id,w)}]))+'</div>'},
+async households(){
+ const w=me.role==="secretary"||me.role==="bhw",hv=me.role==="bhw"||me.role==="captain";
+ const p=await sb.from("puroks").select("id,name").order("name");PU=(p.data||[]).map(x=>[x.id,x.name]);
+ let q=sb.from("households").select("id,household_no,address,purok_id,is_4ps,housing_material,electricity,ownership,head_resident_id,puroks(name)",{count:"exact"}).order("household_no",{nullsFirst:false}).order("address");
+ if(HHF)q=q.eq("purok_id",HHF);
+ const t=HHQ.replace(/[%_,()*]/g,"").trim();
+ if(t){const m=await sb.from("residents_basic").select("household_id").ilike("full_name",lk(t)).not("household_id","is",null).limit(200),ids=[...new Set((m.data||[]).map(x=>x.household_id))];
+  q=q.or("household_no.ilike.*"+t+"*,address.ilike.*"+t+"*"+(ids.length?",id.in.("+ids.join(",")+")":""))}
+ const h=await q.range(HHP*PS,HHP*PS+PS-1);
+ if(h.error)return say(h.error.message.includes("does not exist")?"The household system is not set up yet. Run barangay-talisay-households.sql in Supabase.":h.error.message),"";
+ const rows=h.data||[];keep("households",rows);const ids=rows.map(x=>x.id);
+ const [mem,hh,all,f4,lone]=await Promise.all([
+  ids.length?sb.from("residents_basic").select("id,household_id").in("household_id",ids):{data:[]},
+  hv&&ids.length?sb.from("household_health").select("household_id").in("household_id",ids):{data:[]},
+  sb.from("households").select("id",{count:"exact",head:true}),
+  sb.from("households").select("id",{count:"exact",head:true}).eq("is_4ps",true),
+  sb.from("residents_basic").select("id",{count:"exact",head:true}).is("household_id",null)]);
+ const cnt={};(mem.data||[]).forEach(x=>{cnt[x.household_id]=(cnt[x.household_id]||0)+1});
+ const done=new Set((hh.data||[]).map(x=>x.household_id)),nm=await namesFor(rows.map(x=>x.head_resident_id).filter(Boolean));
+ const head=["No.","Head","Address","Purok","Members","4Ps"].concat(hv?["Health survey"]:[]).concat([""]);
+ const body=rows.map(x=>[x.household_no||"",nm[x.head_resident_id]||"",x.address,x.puroks?.name,cnt[x.id]||0,x.is_4ps?{h:'<span class="chip released">4Ps</span>'}:""].concat(hv?[done.has(x.id)?{h:'<span class="chip approved">Done</span>'}:{h:'<span class="chip received">Not yet</span>'}]:[]).concat([{h:'<button class="ic" data-hmem="'+x.id+'">Members</button>'+(hv?'<button class="ic" data-hhealth="'+x.id+'">'+(me.role==="bhw"?"Health survey":"Health")+'</button>':"")+act("households",x.id,w)}]));
+ return '<div class="grid"><div class="stat"><b>'+(all.count||0)+'</b><span>Households</span></div><div class="stat"><b>'+(f4.count||0)+'</b><span>4Ps households</span></div><div class="stat"><b>'+(lone.count||0)+'</b><span>Residents not in a household</span></div></div>'+
+ '<div class="panel"><h2>Households</h2>'+addForm("households",w,"Add household")+searchForm("hhsearch",HHQ,"hhclear")+
+ '<div class="acts" style="margin-bottom:10px;flex-wrap:wrap"><select id="hhpf" aria-label="Purok" style="width:auto">'+opts([["","All puroks"]].concat(PU),HHF)+'</select><button class="btn ghost" data-hhexcel>Download households (Excel)</button></div>'+
+ tbl(head,body)+pager(h.count||0,HHP,"hhpage")+'<p class="note">Search by household number, address or a member’s name. Open “Members” to add people to a household.'+(hv?" Health survey details are visible only to the BHW and the Punong Barangay.":"")+'</p></div>'},
 async health(){
  const w=me.role==="bhw";let h;
  if(HQ){const m=await sb.from("residents_basic").select("id").ilike("full_name",lk(HQ)).limit(200),ids=(m.data||[]).map(x=>x.id);
@@ -267,7 +298,7 @@ async health(){
  return '<div class="panel"><h2>Health files</h2>'+addForm("health_records",w,"Add record")+searchForm("hsearch",HQ,"hclear")+tbl(["Name","Program","Visit","Status","Notes",""],(h.data||[]).map(x=>[nm[x.resident_id]||"",x.program,x.visit_date,x.status,x.notes,{h:act("health_records",x.id,w)}]))+pager(h.count||0,HP,"hpage")+'<p class="note">Medical details are visible only to the BHW and the Punong Barangay.</p></div>'}
 };
 
-function tabsFor(r){return r==="captain"?["dash","users","audit","records","finance","health"]:[{secretary:"records",treasurer:"finance",bhw:"health"}[r]]}
+function tabsFor(r){return r==="captain"?["dash","users","audit","records","households","finance","health"]:{secretary:["records","households"],treasurer:["finance"],bhw:["health","households"]}[r]||[]}
 async function draw(){
  $("who").innerHTML='<div class="me"><b>'+esc(me.full_name)+'</b>'+LABEL[me.role]+'</div><button class="btn ghost" id="out" style="margin-top:6px;float:right">Sign out</button>';
  const nl=$("nav").scrollLeft;
@@ -290,6 +321,43 @@ function liveRefresh(){clearTimeout(rtT);rtT=setTimeout(function go(){if(!me)ret
 function startRealtime(){if(RT||!me)return;RT=sb.channel("requests-live").on("postgres_changes",{event:"*",schema:"public",table:"requests"},p=>{if(me&&p.eventType!=="DELETE"&&p.new){const was=p.old&&p.old.status;if(me.role==="captain"&&p.new.status==="verified"&&was!=="verified")say("A request is waiting for your approval.",1);if(me.role==="secretary"&&p.new.status==="approved"&&was!=="approved")say("A request was approved. You can print it now.",1);if(me.role==="secretary"&&p.new.status==="received"&&was==="verified")say("The Captain returned a request for correction.",1)}liveRefresh()}).subscribe(st=>{RTOK=st==="SUBSCRIBED"})}
 function stopRealtime(){if(RT){sb.removeChannel(RT);RT=null}RTOK=false;document.title="Barangay Talisay Records System"}
 setInterval(()=>{if(me&&!RTOK)liveRefresh()},60000);
+const dsay=t=>{const m=$("dmsg");if(m)m.textContent=t||"";else say(t)};
+async function openMembers(id){
+ const hh=ROWS.households[id];if(!hh)return;const w=me.role==="secretary"||me.role==="bhw";
+ const m=await sb.from("residents_basic").select("id,full_name,birthdate,sex").eq("household_id",id).order("birthdate");
+ const mem=m.data||[],ag=x=>ageOf(x.birthdate),k5=mem.filter(x=>ag(x)!==""&&ag(x)<=5).length,sn=mem.filter(x=>ag(x)!==""&&ag(x)>=60).length;
+ dlg.className="wide";
+ dlg.innerHTML='<h2>Household'+(hh.household_no?" "+esc(hh.household_no):"")+'</h2><p class="note">'+esc(hh.address||"")+(hh.puroks?.name?", "+esc(hh.puroks.name):"")+'</p>'+
+ '<div class="grid"><div class="stat"><b>'+mem.length+'</b><span>Members</span></div><div class="stat"><b>'+k5+'</b><span>Children 0–5</span></div><div class="stat"><b>'+sn+'</b><span>Seniors 60+</span></div></div>'+
+ '<div style="margin-top:12px">'+tbl(["Name","Age","Sex",""],mem.map(x=>[{h:esc(x.full_name)+(x.id===hh.head_resident_id?' <span class="chip approved">Head</span>':"")},ag(x),x.sex||"",{h:w?(x.id!==hh.head_resident_id?'<button type="button" class="ic" data-mhead="'+x.id+'" data-hid="'+id+'">Make head</button>':"")+'<button type="button" class="ic del" data-mrem="'+x.id+'" data-hid="'+id+'">Remove</button>':""}]))+'</div>'+
+ (w?'<form class="frm one" data-f="addmem|'+id+'">'+fld(["resident_id","Add a member","person"])+'<div class="acts"><button class="btn">Add to household</button></div></form><p class="note">Only residents already in the registry can be added. Adding someone who is in another household moves them here.'+(me.role==="bhw"?" If a person is missing, ask the Secretary to add them first.":"")+'</p>':"")+
+ '<p class="bad" id="dmsg"></p><div class="acts"><button type="button" class="btn ghost" data-close>Close</button></div>';
+ if(!dlg.open)dlg.showModal()}
+async function openHealth(id){
+ const hh=ROWS.households[id];if(!hh)return;const w=me.role==="bhw";
+ const [r,m]=await Promise.all([sb.from("household_health").select("*").eq("household_id",id).maybeSingle(),sb.from("residents_basic").select("birthdate").eq("household_id",id)]);
+ if(r.error)return say(r.error.message);
+ const v=r.data||{},mem=m.data||[],ag=x=>ageOf(x.birthdate),k5=mem.filter(x=>ag(x)!==""&&ag(x)<=5).length,sn=mem.filter(x=>ag(x)!==""&&ag(x)>=60).length;
+ const F=[["water_source","Main water source","select",NS(WATER),"opt"],["toilet","Toilet facility","select",NS(TOILET),"opt"],["garbage","Garbage disposal","select",NS(GARB),"opt"],["pregnant_count","Pregnant members","number","opt"],["family_planning","Family planning method","select",NS(FPM),"opt"],["philhealth","PhilHealth","select",NS(PHIL),"opt"],["notes","Notes","text","opt"]];
+ dlg.className="wide";
+ dlg.innerHTML='<h2>Health survey'+(hh.household_no?", household "+esc(hh.household_no):"")+'</h2><p class="note">'+esc(hh.address||"")+(hh.puroks?.name?", "+esc(hh.puroks.name):"")+' · '+mem.length+' member(s), '+k5+' child(ren) aged 0–5, '+sn+' senior(s). These counts come from the members’ birthdates.'+(v.updated_at?" Last updated "+when(v.updated_at)+".":"")+'</p>'+
+ (w?'<form class="frm" data-f="hhealth|'+id+'">'+F.map(f=>{const h=fld(f,v[f[0]]);return f[0]==="pregnant_count"?h.replace('step="0.01"','step="1"'):h}).join("")+'<div class="acts"><button class="btn">Save survey</button><button type="button" class="btn ghost" data-close>Cancel</button></div></form>'
+   :tbl(["Item","Answer"],F.map(f=>[f[1],v[f[0]]??"Not stated"]))+'<div class="acts" style="margin-top:12px"><button type="button" class="btn ghost" data-close>Close</button></div>')+'<p class="bad" id="dmsg"></p>';
+ if(!dlg.open)dlg.showModal()}
+async function exportHouseholds(){
+ const hv=me.role==="bhw"||me.role==="captain";say("Preparing the households list…");
+ const hs=await allRows(()=>sb.from("households").select("id,household_no,address,is_4ps,housing_material,electricity,ownership,head_resident_id,puroks(name)").order("household_no").order("id"));if(!hs)return;
+ const mem=await allRows(()=>sb.from("residents_basic").select("id,full_name,birthdate,sex,household_id").not("household_id","is",null).order("id"));if(!mem)return;
+ const hl=hv?await allRows(()=>sb.from("household_health").select("*").order("household_id")):[];if(!hl)return;
+ const nm={},cnt={},k5={},sn={},no={},H=Object.fromEntries(hl.map(x=>[x.household_id,x])),inc=(o,k)=>{o[k]=(o[k]||0)+1};
+ hs.forEach(x=>{no[x.id]=x.household_no||x.address||""});
+ mem.forEach(x=>{nm[x.id]=x.full_name;inc(cnt,x.household_id);const a=ageOf(x.birthdate);if(a!==""&&a<=5)inc(k5,x.household_id);if(a!==""&&a>=60)inc(sn,x.household_id)});
+ const list=hs.map(x=>{const r={"Household no.":x.household_no||"",Head:nm[x.head_resident_id]||"",Address:x.address||"",Purok:x.puroks?.name||"",Members:cnt[x.id]||0,"Children 0–5":k5[x.id]||0,"Seniors 60+":sn[x.id]||0,"4Ps":x.is_4ps?"Yes":"No","House materials":x.housing_material||"",Electricity:x.electricity||"",Ownership:x.ownership||""};
+  if(hv){const h=H[x.id]||{};Object.assign(r,{"Water source":h.water_source||"",Toilet:h.toilet||"",Garbage:h.garbage||"","Pregnant members":h.pregnant_count??"","Family planning":h.family_planning||"",PhilHealth:h.philhealth||"","Survey updated":h.updated_at?ymd(new Date(h.updated_at)):""})}return r});
+ const per=count(list,x=>x.Purok).map(k=>({Purok:k[0],Households:k[1],"4Ps households":list.filter(x=>(x.Purok||"None")===k[0]&&x["4Ps"]==="Yes").length,Members:list.filter(x=>(x.Purok||"None")===k[0]).reduce((n,x)=>n+x.Members,0)}));
+ const ml=mem.map(x=>({Household:no[x.household_id]||"",Name:x.full_name,Age:ageOf(x.birthdate),Sex:x.sex||""})).sort((a,b)=>(a.Household+a.Name).localeCompare(b.Household+b.Name));
+ saveXlsx([["Households",list,[14,28,30,18,9,12,11,6,22,18,20,26,22,18,14,20,20,14]],["Members",ml,[20,30,6,6]],["Per purok",per,[20,12,16,10]]],"Talisay-households-"+todayStr()+".xlsx");
+ sb.rpc("log_event",{p_action:"EXPORT",p_detail:"Households ("+list.length+")"});say("Downloaded "+list.length+" households.",1)}
 async function verifyScreen(tok){
  $("who").innerHTML="";$("nav").innerHTML="";me=null;
  $("view").innerHTML='<div class="panel login"><p class="note">Checking certificate…</p></div>';
@@ -427,7 +495,7 @@ function openEdit(t,id){
  const row=ROWS[t][id];if(!row)return;
  dlg.className="";dlg.innerHTML='<h2>Edit '+CFG[t].n+'</h2><form class="frm one" data-f="edit|'+t+'|'+id+'">'+CFG[t].f(true).map(f=>fld(f,typeof row[f[0]]==="boolean"?String(row[f[0]]):row[f[0]])).join('')+'<div class="acts"><button class="btn">Save changes</button><button type="button" class="btn ghost" data-close>Cancel</button></div></form>';dlg.showModal()}
 function openDel(t,id){
- const r=ROWS[t][id]||{},name=r.full_name||r.ref_no||r.case_no||r.or_no||r.description||r.program||"this record";
+ const r=ROWS[t][id]||{},name=r.full_name||r.ref_no||r.case_no||r.or_no||r.description||r.program||(r.household_no?"Household "+r.household_no:r.address)||"this record";
  dlg.className="";dlg.innerHTML='<h2>Delete '+CFG[t].n+'?</h2><p>“'+esc(name)+'” will be removed. This action is recorded in the activity log and can’t be undone.</p><form class="frm one" data-f="del|'+t+'|'+id+'"><div class="acts"><button class="btn danger">Yes, delete</button><button type="button" class="btn ghost" data-close>Cancel</button></div></form>';dlg.showModal()}
 document.addEventListener("contextmenu",e=>{if(e.target.closest&&e.target.closest(".cert,#cert,#prev"))e.preventDefault()});
 document.addEventListener("dragstart",e=>{if(e.target.tagName==="IMG")e.preventDefault()});
@@ -437,6 +505,12 @@ document.addEventListener("submit",async e=>{
  if(n==="rsearch"){RQ=(o.q||"").trim();RP=0;return draw()}
  if(n==="hsearch"){HQ=(o.q||"").trim();HP=0;return draw()}
  if(n==="qsearch"){QQ=(o.q||"").trim();QP=0;return draw()}
+ if(n==="hhsearch"){HHQ=(o.q||"").trim();HHP=0;return draw()}
+ if(n.startsWith("addmem|")){const hid=n.split("|")[1];if(!o.resident_id)return dsay("Search and choose a resident from the list first.");
+  const r=await sb.rpc("set_household_member",{p_resident:o.resident_id,p_household:hid});if(r.error)return dsay(r.error.message);await draw();return openMembers(hid)}
+ if(n.startsWith("hhealth|")){const hid=n.split("|")[1],pc=String(o.pregnant_count||"").trim(),nz=k=>o[k]||null;
+  const r=await sb.from("household_health").upsert({household_id:hid,water_source:nz("water_source"),toilet:nz("toilet"),garbage:nz("garbage"),pregnant_count:pc===""?null:Math.max(0,parseInt(pc,10)||0),family_planning:nz("family_planning"),philhealth:nz("philhealth"),notes:nz("notes"),updated_at:new Date().toISOString()}).select();
+  if(r.error)return dsay(r.error.message);dlg.close();say("Health survey saved.",1);return draw()}
  if(f.querySelector('[name="resident_id"]')&&!o.resident_id)return say("Please search and choose a resident from the list.");
  const [m,t,id]=n.split("|");
  if(m==="edit"){if(ok(await sb.from(t).update(pre(t,o)).eq("id",id).select())){dlg.close();say("Changes saved.",1);draw()}return}
@@ -474,6 +548,13 @@ document.addEventListener("click",async e=>{
  if("qclear" in b.dataset){QQ="";QP=0;return draw()}
  if("rclear" in b.dataset){RQ="";RP=0;return draw()}
  if("hclear" in b.dataset){HQ="";HP=0;return draw()}
+ if(b.dataset.hmem)return openMembers(b.dataset.hmem);
+ if(b.dataset.hhealth)return openHealth(b.dataset.hhealth);
+ if(b.dataset.mrem){if(!confirm("Remove this person from the household? The resident record stays in the registry."))return;const hid=b.dataset.hid,r=await sb.rpc("set_household_member",{p_resident:b.dataset.mrem,p_household:null});if(r.error)return dsay(r.error.message);await draw();return openMembers(hid)}
+ if(b.dataset.mhead){const hid=b.dataset.hid,r=await sb.from("households").update({head_resident_id:b.dataset.mhead}).eq("id",hid).select();if(r.error)return dsay(r.error.message);await draw();return openMembers(hid)}
+ if(b.dataset.hhpage){HHP=Math.max(0,HHP+ +b.dataset.hhpage);return draw()}
+ if("hhclear" in b.dataset){HHQ="";HHP=0;return draw()}
+ if("hhexcel" in b.dataset)return exportHouseholds();
  if("close" in b.dataset)return dlg.close();
  if(b.dataset.edit)return openEdit(...b.dataset.edit.split("|"));
  if(b.dataset.del)return openDel(...b.dataset.del.split("|"));
@@ -485,6 +566,7 @@ document.addEventListener("click",async e=>{
   if(ok(await sb.from("profiles").update({role,is_active:a}).eq("id",id).select())){sb.rpc("log_event",{p_action:"ROLE_CHANGE",p_detail:"Account "+id+" set to "+(role||"none")+(a?", active":", inactive")});say("Account saved.",1);draw()}}
 });
 document.addEventListener("change",e=>{
+ if(e.target.id==="hhpf"){HHF=e.target.value;HHP=0;draw()}
  if(e.target.id==="raf"){AF=e.target.value;RP=0;draw()}
  if(e.target.id==="rcf"){CF=e.target.value;RP=0;draw()}
  if(e.target.id==="rgf"){GF=e.target.value;RP=0;draw()}
