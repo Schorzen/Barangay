@@ -77,7 +77,7 @@ dialog{max-height:92vh;overflow:auto}
 .cert>*:not(.wm){position:relative;z-index:1}
 .ic.ok{background:#D8F3EC;color:#0B5A4D;border:1px solid #9ADBC9}
 .cert .sig.hs{margin-top:72px}
-.cert .signimg{position:absolute;left:50%;top:-62px;transform:translateX(-50%);height:84px;width:auto;max-width:90%;z-index:2;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.cert .signimg{position:absolute;left:50%;top:-54px;transform:translateX(-50%);height:84px;width:auto;max-width:90%;z-index:2;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .cert img{-webkit-user-drag:none;user-select:none;-webkit-touch-callout:none}
 .cert .signph{position:absolute;left:50%;top:-44px;transform:translateX(-50%);font:italic .8em Georgia,serif;color:#888;border:1px dashed #bbb;padding:4px 10px;white-space:nowrap}
 .vrow{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding:8px 0;text-align:left}
@@ -85,7 +85,7 @@ dialog{max-height:92vh;overflow:auto}
 .cert .ht{flex:1;text-align:center;line-height:1.35}
 .cert .hlogo{width:80px;height:80px;object-fit:contain;flex:none;pointer-events:none}
 @page{size:8.5in 11in;margin:16mm}
-@media print{body::before{display:none}header,main,dialog{display:none!important}body{background:#fff}#cert{display:block!important}.cert{font-size:12pt;min-width:0}}
+@media print{html,body{min-height:0!important;height:auto!important;padding:0!important}body::before{display:none}header,main,dialog{display:none!important}body{background:#fff}#cert{display:block!important}.cert{font-size:12pt;min-width:0;line-height:1.5;padding:18px 30px}.cert p{margin:7px 0}.cert h2.ct{margin:12px 0}.cert .sig{margin-top:34px}.cert .sig.hs{margin-top:74px}.cert .cf{margin-top:16px;break-inside:avoid}.cert .sig,.cert .ch{break-inside:avoid}}
 </style>
 </head>
 <body>
@@ -344,7 +344,7 @@ function certHTML(r,purpose,pv){
   "Business clearance":"This is to certify that "+who+home+", is granted clearance by this office to operate a business within this barangay, subject to existing laws and ordinances.</p><p>This clearance is issued upon the request of the above-named person for "+pu+"."
  };
  const d=new Date();
- return '<div class="cert">'+WM+''+HEAD("OFFICE OF THE PUNONG BARANGAY")+'<h2 class="ct">'+esc(TITLES[r.type]||r.type.toUpperCase())+'</h2><p class="n"><b>TO WHOM IT MAY CONCERN:</b></p><p>'+(BODY[r.type]||"")+'</p><p>Issued this '+ord(d.getDate())+' day of '+MONTHS[d.getMonth()]+', '+d.getFullYear()+' at Barangay Talisay, Santa Fe, Cebu, Philippines.</p><div class="sig'+(r._sig?' hs':'')+'">'+(r._sig?(pv?'<span class="signph">Signature prints here</span>':'<img class="signimg" alt="" draggable="false" src="'+r._sig+'">'):'')+'<b>HON. '+esc(PB)+'</b><br>Punong Barangay</div><div class="cf">'+qr(r,d)+'Ref. No.: '+esc(r.ref_no)+'<br>O.R. No.: '+(r._or?esc(r._or.or_no):"____________")+' &nbsp; Amount paid: '+(r._or?peso(r._or.amount):"____________")+'<br>Prepared by: '+esc(me.full_name)+(r.approved_at?'<br>Approved by the Punong Barangay on '+new Date(r.approved_at).toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"}):"")+'<br><i>Not valid without the official dry seal.</i><br>Scan the QR code to check that this certificate is genuine.</div></div>'}
+ return '<div class="cert">'+WM+''+HEAD("OFFICE OF THE PUNONG BARANGAY")+'<h2 class="ct">'+esc(TITLES[r.type]||r.type.toUpperCase())+'</h2><p class="n"><b>TO WHOM IT MAY CONCERN:</b></p><p>'+(BODY[r.type]||"")+'</p><p>Issued this '+ord(d.getDate())+' day of '+MONTHS[d.getMonth()]+', '+d.getFullYear()+' at Barangay Talisay, Santa Fe, Cebu, Philippines.</p><div class="sig'+(r._sig?' hs':'')+'">'+(r._sig?(pv?'<span class="signph">Signature prints here</span>':'<img class="signimg" alt="" draggable="false" src="'+r._sig+'">'):'')+'<b>HON. '+esc(PB)+'</b><br>Punong Barangay</div><div class="cf">'+qr(r,d)+'Ref. No.: '+esc(r.ref_no)+'<br>O.R. No.: '+(r._or?esc(r._or.or_no):"____________")+' &nbsp; Amount paid: '+(r._or?peso(r._or.amount):"____________")+'<br>Prepared by: '+esc(me.full_name)+(r.approved_at?'<br>Approved by the Punong Barangay on '+new Date(r.approved_at).toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"}):"")+'<br>Scan the QR code to check that this certificate is genuine.</div></div>'}
 async function openPrint(id){
  const r=ROWS.requests[id];if(!r)return;
  const x=await sb.rpc("receipt_for",{p_ref:r.ref_no});r._or=(x.data&&x.data[0])||null;r._sig=["approved","released"].includes(r.status)?await getSig():"";
