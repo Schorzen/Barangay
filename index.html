@@ -117,7 +117,7 @@ const CL="Certificate of common law",FJ="First time jobseeker certification",SP=
 const TYPES=opt(["Barangay clearance","Certificate of indigency","Certificate of residency","Business clearance",CL,FJ,SP]);
 const PROG=opt(["Immunization","Prenatal","Senior check-up","Nutrition","Family planning"]);
 const BST=[["open","Open"],["mediation","Mediation"],["settled","Settled"],["referred","Referred"]];
-let me=null,tab=null,PU=[],RES=[],ROWS={},SH=null,IMP=[],HHQ="",HHP=0,HHF="",SR=false,PF="",SXF="",GF="",CF="",AF="",RQ="",RP=0,HQ="",HP=0,QQ="",QP=0,UNPAID=[["","— none —"]],MONTH=new Date().toISOString().slice(0,7);
+let me=null,tab=null,PU=[],RES=[],ROWS={},SH=null,IMP=[],AGT="0-11m, 1-4, 5-9, 10-14, 15-19, 20-59, 60+",AGU="",AGD="",AGHTML="",AGR=null,HHQ="",HHP=0,HHF="",SR=false,PF="",SXF="",GF="",CF="",AF="",RQ="",RP=0,HQ="",HP=0,QQ="",QP=0,UNPAID=[["","— none —"]],MONTH=new Date().toISOString().slice(0,7);
 const CFG={
  residents:{n:"resident",f:()=>[["full_name","Full name","text"],["birthdate","Birthdate","date","opt"],["sex","Sex","select",[["M","Male"],["F","Female"]]],["civil_status","Civil status","select",[["","Not stated"]].concat(opt(CSL)),"opt"],["association","Association (optional)","select",[["","None"]].concat(opt(ASL)),"opt"],["purok_id","Purok","select",PU],["sector","Sector (optional)","text","opt"],["is_pwd","PWD","select",[["false","No"],["true","Yes"]]],["is_solo_parent","Solo parent","select",[["false","No"],["true","Yes"]]],["is_4ps","4Ps beneficiary","select",[["false","No"],["true","Yes"]]]]},
  requests:{n:"request",x:()=>[["resident_id","Resident","person"]],f:()=>[["type","Type","select",TYPES],["details","Details: partner’s name (common law) or children (solo parent)","text","opt"]]},
@@ -289,13 +289,14 @@ async households(){
  '<div class="acts" style="margin-bottom:10px;flex-wrap:wrap"><select id="hhpf" aria-label="Purok" style="width:auto">'+opts([["","All puroks"]].concat(PU),HHF)+'</select><button class="btn ghost" data-hhexcel>Download households (Excel)</button></div>'+
  tbl(head,body)+pager(h.count||0,HHP,"hhpage")+'<p class="note">Search by household number, address or a member’s name. Open “Members” to add people to a household.'+(hv?" Health survey details are visible only to the BHW and the Punong Barangay.":"")+'</p></div>'},
 async health(){
+ const ppx=await sb.from("puroks").select("id,name").order("name");PU=(ppx.data||[]).map(x=>[x.id,x.name]);
  const w=me.role==="bhw";let h;
  if(HQ){const m=await sb.from("residents_basic").select("id").ilike("full_name",lk(HQ)).limit(200),ids=(m.data||[]).map(x=>x.id);
   h=ids.length?await sb.from("health_records").select("*",{count:"exact"}).in("resident_id",ids).order("visit_date",{ascending:false}).range(HP*PS,HP*PS+PS-1):{data:[],count:0}}
  else h=await sb.from("health_records").select("*",{count:"exact"}).order("visit_date",{ascending:false}).range(HP*PS,HP*PS+PS-1);
  keep("health_records",h.data);
  const nm=await namesFor([...new Set((h.data||[]).map(x=>x.resident_id))]);
- return '<div class="panel"><h2>Health files</h2>'+addForm("health_records",w,"Add record")+searchForm("hsearch",HQ,"hclear")+tbl(["Name","Program","Visit","Status","Notes",""],(h.data||[]).map(x=>[nm[x.resident_id]||"",x.program,x.visit_date,x.status,x.notes,{h:act("health_records",x.id,w)}]))+pager(h.count||0,HP,"hpage")+'<p class="note">Medical details are visible only to the BHW and the Punong Barangay.</p></div>'}
+ return agPanel()+'<div class="panel"><h2>Health files</h2>'+addForm("health_records",w,"Add record")+searchForm("hsearch",HQ,"hclear")+tbl(["Name","Program","Visit","Status","Notes",""],(h.data||[]).map(x=>[nm[x.resident_id]||"",x.program,x.visit_date,x.status,x.notes,{h:act("health_records",x.id,w)}]))+pager(h.count||0,HP,"hpage")+'<p class="note">Medical details are visible only to the BHW and the Punong Barangay.</p></div>'}
 };
 
 function tabsFor(r){return r==="captain"?["dash","users","audit","records","households","finance","health"]:{secretary:["records","households"],treasurer:["finance"],bhw:["health","households"]}[r]||[]}
@@ -358,6 +359,47 @@ async function exportHouseholds(){
  const ml=mem.map(x=>({Household:no[x.household_id]||"",Name:x.full_name,Age:ageOf(x.birthdate),Sex:x.sex||""})).sort((a,b)=>(a.Household+a.Name).localeCompare(b.Household+b.Name));
  saveXlsx([["Households",list,[14,28,30,18,9,12,11,6,22,18,20,26,22,18,14,20,20,14]],["Members",ml,[20,30,6,6]],["Per purok",per,[20,12,16,10]]],"Talisay-households-"+todayStr()+".xlsx");
  sb.rpc("log_event",{p_action:"EXPORT",p_detail:"Households ("+list.length+")"});say("Downloaded "+list.length+" households.",1)}
+const AGPRE=[["0-11m, 1-4, 5-9, 10-14, 15-19, 20-59, 60+","RHU groups (0–11 months, 1–4, 5–9 … 60+)"],["0-11m, 1-5, 6-12, 13-17","Children (0–11 months, 1–5, 6–12, 13–17)"],["0-5m, 6-11m, 12-23m, 24-59m","Under 5 by months"],["0-4, 5-9, 10-14, 15-19, 20-24, 25-29, 30-34, 35-39, 40-44, 45-49, 50-54, 55-59, 60-64, 65-69, 70-74, 75-79, 80+","5-year groups (PSA)"],["15-49","Reproductive age (15–49)"],["60+","Senior citizens (60+)"]];
+function parseBr(t){const out=[];for(const raw of String(t).split(/[,;\n]/)){const x=raw.trim();if(!x)continue;let m;
+  if((m=x.match(/^(\d+)\s*(?:-|–|to)\s*(\d+)\s*(m|mo|mos|months?)?$/i))){const mo=!!m[3],a=+m[1],b=+m[2];if(b<a)return{err:"“"+x+"”: the first number must be smaller."};out.push({lo:mo?a:a*12,hi:mo?b:b*12+11,label:a+"–"+b+(mo?" months":" years")})}
+  else if((m=x.match(/^(\d+)\s*(m|mo|mos|months?)?\s*\+$/i))){const mo=!!m[2],a=+m[1];out.push({lo:mo?a:a*12,hi:1e9,label:a+(mo?"+ months":"+ years")})}
+  else if((m=x.match(/^(\d+)\s*(m|mo|mos|months?)?$/i))){const mo=!!m[2],a=+m[1];out.push({lo:mo?a:a*12,hi:mo?a:a*12+11,label:a+(mo?" months":a===1?" year":" years")})}
+  else return{err:"“"+x+"” is not understood. Write groups like 0-11m, 1-5, 60+."}}
+ return out.length?{br:out}:{err:"Write at least one age group."}}
+function monthsOld(bd,asOf){if(!bd)return null;const[by,bm,bdd]=bd.split("-").map(Number),[y,m,d]=asOf.split("-").map(Number);return(y-by)*12+(m-bm)-(d<bdd?1:0)}
+const ageTxt=n=>n<24?n+" month"+(n===1?"":"s"):Math.floor(n/12)+" yrs"+(n%12?" "+n%12+" mos":"");
+function agPanel(){if(!AGD)AGD=todayStr();
+ return '<div class="panel"><h2>Age groups</h2><div class="frm"><label>Ready-made groups<select id="agpre">'+opts([["","Custom (type below)"]].concat(AGPRE),AGPRE.some(p=>p[0]===AGT)?AGT:"")+'</select></label><label>Age groups<input id="agtxt" value="'+esc(AGT)+'"></label><label>Purok<select id="agpu">'+opts([["","All puroks"]].concat(PU),AGU)+'</select></label><label>Age as of<input type="date" id="agdt" value="'+esc(AGD)+'"></label><button class="btn" data-agshow>Show</button></div><div id="agout">'+(AGHTML||'<p class="note">Choose the age groups and press Show.</p>')+'</div><p class="note">Separate groups with commas. Numbers are years; add “m” for months. Examples: <b>1-5</b>, <b>0-11m</b>, <b>60+</b>, <b>6-59m</b>.</p></div>'}
+async function agShow(){
+ const P=parseBr(AGT),out=$("agout");if(P.err){AGHTML='<p class="bad">'+esc(P.err)+'</p>';out.innerHTML=AGHTML;return}
+ out.innerHTML='<p class="note">Counting residents…</p>';
+ const rows=await allRows(()=>{let q=sb.from("residents_basic").select("id,full_name,birthdate,sex,purok_id").order("id");if(AGU)q=q.eq("purok_id",AGU);return q});
+ if(!rows){out.innerHTML="";return}
+ const br=P.br,pn=Object.fromEntries(PU),C=br.map(()=>({M:0,F:0,U:0,list:[]}));let nob=0,none=0,unb=0;
+ rows.forEach(x=>{const mo=monthsOld(x.birthdate,AGD);if(mo===null){nob++;return}if(mo<0){unb++;return}let hit=false;
+  br.forEach((b,i)=>{if(mo>=b.lo&&mo<=b.hi){hit=true;const c=C[i];c[x.sex==="M"?"M":x.sex==="F"?"F":"U"]++;c.list.push({x,mo})}});if(!hit)none++});
+ AGR={br,C,rows:rows.length,nob,none,unb,pu:AGU?pn[AGU]:"All puroks",asOf:AGD};
+ const S=k=>C.reduce((n,c)=>n+c[k],0),b=t=>({h:"<b>"+esc(String(t))+"</b>"});
+ const body=br.map((g,i)=>[g.label,C[i].M,C[i].F,C[i].M+C[i].F+C[i].U,{h:C[i].list.length?'<button class="ic" data-agnames="'+i+'">Download names</button>':""}]);
+ body.push([b("Total"),b(S("M")),b(S("F")),b(S("M")+S("F")+S("U")),""]);
+ AGHTML='<p class="note">'+esc(AGR.pu)+', ages as of '+esc(fmtD(AGD))+'. '+rows.length+' resident(s) checked.</p>'+tbl(["Age group","Male","Female","Total",""],body)+
+  ((nob||none||unb||S("U"))?'<p class="note">'+(nob?"No birthdate (not counted): "+nob+". ":"")+(none?"Outside these age groups: "+none+". ":"")+(unb?"Born after this date: "+unb+". ":"")+(S("U")?"No sex recorded (in Total only): "+S("U")+".":"")+'</p>':"")+
+  '<div class="acts" style="margin-top:10px"><button class="btn ghost" data-agexcel>Download age report (Excel)</button></div>';
+ out.innerHTML=AGHTML}
+function agExcel(){
+ if(!AGR)return;const{br,C}=AGR,pn=Object.fromEntries(PU);
+ const sum=br.map((g,i)=>({"Age group":g.label,Male:C[i].M,Female:C[i].F,"Sex not stated":C[i].U,Total:C[i].M+C[i].F+C[i].U}));
+ const t=k=>sum.reduce((n,x)=>n+x[k],0);sum.push({"Age group":"TOTAL",Male:t("Male"),Female:t("Female"),"Sex not stated":t("Sex not stated"),Total:t("Total")});
+ const sheets=[["Age groups",sum,[22,8,8,14,8]]];
+ if(!AGU){const bp=[];PU.concat([["","No purok"]]).forEach(([id,name])=>br.forEach((g,i)=>{const l=C[i].list.filter(v=>(v.x.purok_id||"")===id);if(!l.length)return;bp.push({Purok:name,"Age group":g.label,Male:l.filter(v=>v.x.sex==="M").length,Female:l.filter(v=>v.x.sex==="F").length,Total:l.length})}));sheets.push(["By purok",bp,[20,22,8,8,8]])}
+ sheets.push(["Notes",[{Note:"Barangay Talisay, Santa Fe, Cebu"},{Note:"Purok: "+AGR.pu},{Note:"Ages as of: "+AGR.asOf},{Note:"Residents checked: "+AGR.rows},{Note:"No birthdate (not counted): "+AGR.nob},{Note:"Outside these age groups: "+AGR.none}],[50]]);
+ saveXlsx(sheets,"Talisay-age-groups-"+AGR.asOf+".xlsx");
+ sb.rpc("log_event",{p_action:"EXPORT",p_detail:"Age groups as of "+AGR.asOf+" ("+AGR.pu+")"});say("Age report downloaded.",1)}
+function agNames(i){
+ if(!AGR)return;const g=AGR.br[i],pn=Object.fromEntries(PU);
+ const l=AGR.C[i].list.map(v=>({Name:v.x.full_name,Birthdate:v.x.birthdate,Age:ageTxt(v.mo),Sex:v.x.sex||"",Purok:pn[v.x.purok_id]||""})).sort((a,b)=>(a.Purok+a.Name).localeCompare(b.Purok+b.Name));
+ saveXlsx([["Age "+g.label.replace(/[^\w +–-]/g,"").slice(0,24),l,[32,12,16,6,20]]],"Talisay-age-"+g.label.replace(/\s+/g,"-").replace("–","-")+"-"+AGR.asOf+".xlsx");
+ sb.rpc("log_event",{p_action:"EXPORT",p_detail:"Names aged "+g.label+" ("+l.length+")"});say("Downloaded "+l.length+" names.",1)}
 async function verifyScreen(tok){
  $("who").innerHTML="";$("nav").innerHTML="";me=null;
  $("view").innerHTML='<div class="panel login"><p class="note">Checking certificate…</p></div>';
@@ -548,6 +590,9 @@ document.addEventListener("click",async e=>{
  if("qclear" in b.dataset){QQ="";QP=0;return draw()}
  if("rclear" in b.dataset){RQ="";RP=0;return draw()}
  if("hclear" in b.dataset){HQ="";HP=0;return draw()}
+ if("agshow" in b.dataset)return agShow();
+ if("agexcel" in b.dataset)return agExcel();
+ if(b.dataset.agnames)return agNames(+b.dataset.agnames);
  if(b.dataset.hmem)return openMembers(b.dataset.hmem);
  if(b.dataset.hhealth)return openHealth(b.dataset.hhealth);
  if(b.dataset.mrem){if(!confirm("Remove this person from the household? The resident record stays in the registry."))return;const hid=b.dataset.hid,r=await sb.rpc("set_household_member",{p_resident:b.dataset.mrem,p_household:null});if(r.error)return dsay(r.error.message);await draw();return openMembers(hid)}
@@ -566,6 +611,10 @@ document.addEventListener("click",async e=>{
   if(ok(await sb.from("profiles").update({role,is_active:a}).eq("id",id).select())){sb.rpc("log_event",{p_action:"ROLE_CHANGE",p_detail:"Account "+id+" set to "+(role||"none")+(a?", active":", inactive")});say("Account saved.",1);draw()}}
 });
 document.addEventListener("change",e=>{
+ if(e.target.id==="agpre"&&e.target.value){AGT=e.target.value;$("agtxt").value=AGT}
+ if(e.target.id==="agtxt"){AGT=e.target.value;const ps=$("agpre");if(ps)ps.value=AGPRE.some(p=>p[0]===AGT)?AGT:""}
+ if(e.target.id==="agpu")AGU=e.target.value;
+ if(e.target.id==="agdt")AGD=e.target.value||todayStr();
  if(e.target.id==="hhpf"){HHF=e.target.value;HHP=0;draw()}
  if(e.target.id==="raf"){AF=e.target.value;RP=0;draw()}
  if(e.target.id==="rcf"){CF=e.target.value;RP=0;draw()}
