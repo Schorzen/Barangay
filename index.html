@@ -766,7 +766,7 @@ document.addEventListener("click",async e=>{
  if(b.dataset.edit)return openEdit(...b.dataset.edit.split("|"));
  if(b.dataset.del)return openDel(...b.dataset.del.split("|"));
  if(b.id==="out"){await logEv({p_action:"SIGN_OUT"});await sb.auth.signOut();say("");return loginScreen()}
- if(b.dataset.t){tab=b.dataset.t;say("");logEv({p_action:"VIEW",p_detail:MODS[tab]});return draw()}
+ if(b.dataset.t){tab=b.dataset.t;say("");return draw()}
  if(b.dataset.adv){const to=b.dataset.to,lb=b.dataset.lab||"",cap=me.role==="captain";b.disabled=true;
   if(ok(await sb.from("requests").update({status:to}).eq("id",b.dataset.adv).select())){if(dlg.open)dlg.close();SEL.delete(b.dataset.adv);
    say(to==="approved"?"Approved "+lb+".":cap&&to==="verified"?"Taken back "+lb+". It is waiting for your approval again.":cap&&to==="received"?"Returned "+lb+" to the secretary.":"Updated.",1);
