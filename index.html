@@ -50,7 +50,6 @@ tbody tr:hover{background:rgba(255,255,255,.7)}
 .btn.danger,.ic.del{background:#FCE8E4;color:var(--coral);border:1px solid #F2B9AE;box-shadow:none}
 .ic{font:600 .8rem "Source Sans 3",sans-serif;border-radius:8px;padding:5px 11px;cursor:pointer;margin-right:4px}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #2F6FDE;outline-offset:2px}
-@media (prefers-reduced-motion:no-preference){.btn,.ic,nav button{transition:transform .15s,background .15s}.btn:hover{transform:translateY(-1px)}}
 .frm{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));align-items:end;margin-bottom:14px}
 .frm.one{grid-template-columns:1fr;margin:12px 0 0}.acts{display:flex;gap:8px}
 label{font-size:.82rem;color:var(--mute);display:grid;gap:4px;font-weight:600}
@@ -106,8 +105,8 @@ td .note{font-size:.8rem}
 #msg{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;width:max-content;max-width:min(560px,calc(100% - 32px));margin:0;box-shadow:0 10px 30px rgba(20,35,60,.28);cursor:pointer}
 #msg:not(.good):not([hidden])::after{content:" (tap to close)";opacity:.65;font-size:.82em}
 .login .lgo{display:block;margin:0 auto 10px;width:84px;height:84px;object-fit:contain}.login h2{justify-content:center}.login>.note{text-align:center}
+form[data-busy] button{opacity:.6;pointer-events:none}
 .sk{display:grid;gap:12px;margin-top:14px}.sk i{display:block;height:96px;border-radius:18px;background:linear-gradient(90deg,rgba(255,255,255,.6),rgba(255,255,255,.95),rgba(255,255,255,.6));background-size:200% 100%}
-@media (prefers-reduced-motion:no-preference){.sk i{animation:sk 1.2s linear infinite}@keyframes sk{to{background-position:-200% 0}}dialog[open]{animation:dg .18s ease-out}@keyframes dg{from{opacity:0;transform:translateY(8px) scale(.98)}}.panel,.stat{animation:pn .25s ease-out both}@keyframes pn{from{opacity:0;transform:translateY(6px)}}}
 @media (pointer:coarse){.ic{padding:9px 14px;margin-bottom:4px}.btn{padding:12px 18px}nav button{padding:11px 18px}input,select{padding:12px}}
 @media (max-width:640px){
 body{font-size:16px}header h1{font-size:1.25rem}.me{font-size:.8rem}.panel{padding:14px;border-radius:16px}
@@ -126,7 +125,6 @@ table.stack td select{width:auto;min-width:150px}table.stack td .ic{margin:2px 0
 @media (min-width:641px){table.stack td:last-child{white-space:normal;min-width:130px}table.stack td:last-child .note{display:block;margin-bottom:4px}}
 #abar{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:40;width:min(580px,calc(100% - 24px));background:#1F3A5F;color:#fff;border-radius:14px;padding:12px 14px;box-shadow:0 14px 40px rgba(20,35,60,.4);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 #abar b{flex:1 1 220px;font-weight:600}#abar .btn{box-shadow:none}#abar .btn.ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.55)}
-@media (prefers-reduced-motion:no-preference){#abar:not([hidden]){animation:ab .25s ease-out}@keyframes ab{from{opacity:0;transform:translate(-50%,-10px)}}}
 @page{size:8.5in 11in;margin:16mm}
 @media print{html,body{min-height:0!important;height:auto!important;padding:0!important}body::before{display:none}header,main,dialog,#abar,#msg{display:none!important}body{background:#fff}#cert{display:block!important}.cert{font-size:12pt;min-width:0}.cert .cf,.cert .sig,.cert .ch{break-inside:avoid}.cert.tight{line-height:1.5;padding:18px 30px}.cert.tight p{margin:7px 0}.cert.tight h2.ct{margin:12px 0}.cert.tight .sig{margin-top:34px}.cert.tight .cf{margin-top:16px}.cert.roomy{font-size:13pt;line-height:1.75;padding:28px 38px}.cert.roomy .ch{margin-bottom:6px}.cert.roomy h2.ct{margin:24px 0}.cert.roomy p{margin:14px 0}.cert.roomy .sig{margin-top:60px}.cert.roomy .sig.hs{margin-top:96px}.cert.roomy .cf{margin-top:26px;font-size:.8em}.cert.pg2{break-before:page;margin-top:16px}.cert.pg2 h2.ct{margin:16px 0}.cert.pg2 li{margin:5px 0}@media print{.cert.pg2{margin-top:0}}}
 </style>
@@ -400,8 +398,8 @@ async function draw(){
  const nl=$("nav").scrollLeft;
  $("nav").innerHTML=tabsFor(me.role).map(t=>'<button role="tab" data-t="'+t+'" aria-selected="'+(t===tab)+'">'+MODS[t]+(t==="dash"&&PEND?'<span class="bdg">'+PEND+'</span>':'')+'</button>').join('');$("nav").scrollLeft=nl;
  const same=SH===tab,y=window.scrollY,fk=document.activeElement?.closest?.("form[data-f]")?.dataset.f;
- if(!same)$("view").innerHTML='<div class="sk" aria-label="Loading"><i></i><i></i><i></i></div>';
- const html=await V[tab]();
+ document.body.style.cursor="progress";
+ let html;try{html=await V[tab]()}finally{document.body.style.cursor=""}
  $("view").innerHTML=html;SH=tab;
  if(same)window.scrollTo(0,y);
  if(fk&&/search$/.test(fk)){const el=document.querySelector('form[data-f="'+fk+'"] input[name="q"]');if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length)}}
