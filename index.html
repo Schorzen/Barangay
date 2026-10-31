@@ -85,6 +85,36 @@ dialog{max-height:92vh;overflow:auto}
 .cert .ch{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .cert .ht{flex:1;text-align:center;line-height:1.35}
 .cert .hlogo{width:80px;height:80px;object-fit:contain;flex:none;pointer-events:none}
+/* polish */
+header{box-shadow:0 1px 0 rgba(31,58,95,.06),0 8px 24px -16px rgba(31,58,95,.35)}
+nav{scrollbar-width:none;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}nav::-webkit-scrollbar{display:none}
+nav button:hover:not([aria-selected=true]){background:rgba(31,58,95,.07);color:var(--accent)}
+.panel h2{display:flex;align-items:center;gap:8px}
+th{position:sticky;top:0;background:rgba(255,255,255,.96)}
+tbody tr:nth-child(even){background:rgba(31,58,95,.025)}tbody tr:hover{background:rgba(31,58,95,.06)}
+td{vertical-align:middle}
+td .note{font-size:.8rem}
+.chip.a-add{background:#CDEFE8;color:#0B5A4D}.chip.a-edit{background:#D6E3FF;color:#1E3F8A}.chip.a-del{background:#FCE8E4;color:#8A2B1B}.chip.a-out{background:#FDEBB9;color:#6B4A00}.chip.a-role{background:#E7DDFA;color:#4B2A8A}.chip.a-bad{background:#B93A24;color:#fff}
+#msg{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;width:max-content;max-width:min(560px,calc(100% - 32px));margin:0;box-shadow:0 10px 30px rgba(20,35,60,.28);cursor:pointer}
+#msg:not(.good):not([hidden])::after{content:" (tap to close)";opacity:.65;font-size:.82em}
+.login .lgo{display:block;margin:0 auto 10px;width:84px;height:84px;object-fit:contain}.login h2{justify-content:center}.login>.note{text-align:center}
+.sk{display:grid;gap:12px;margin-top:14px}.sk i{display:block;height:96px;border-radius:18px;background:linear-gradient(90deg,rgba(255,255,255,.6),rgba(255,255,255,.95),rgba(255,255,255,.6));background-size:200% 100%}
+@media (prefers-reduced-motion:no-preference){.sk i{animation:sk 1.2s linear infinite}@keyframes sk{to{background-position:-200% 0}}dialog[open]{animation:dg .18s ease-out}@keyframes dg{from{opacity:0;transform:translateY(8px) scale(.98)}}.panel,.stat{animation:pn .25s ease-out both}@keyframes pn{from{opacity:0;transform:translateY(6px)}}}
+@media (pointer:coarse){.ic{padding:9px 14px;margin-bottom:4px}.btn{padding:12px 18px}nav button{padding:11px 18px}input,select{padding:12px}}
+@media (max-width:640px){
+body{font-size:16px}header h1{font-size:1.25rem}.me{font-size:.8rem}.panel{padding:14px;border-radius:16px}
+.grid{grid-template-columns:repeat(2,1fr)}
+.sf input,.search{max-width:none;flex:1 1 100%}.sf .btn{flex:1}
+.acts select{flex:1 1 45%;width:auto!important}
+table.stack thead{display:none}
+table.stack,table.stack tbody,table.stack tr,table.stack td{display:block;width:100%}
+table.stack tr{border:1px solid var(--line);border-radius:12px;padding:8px 12px;margin-bottom:10px;background:#fff!important}
+table.stack td{border:0;padding:4px 0;white-space:normal;display:flex;gap:12px;justify-content:space-between;text-align:right}
+table.stack td::before{content:attr(data-label);color:var(--mute);font-size:.74rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;flex:none;text-align:left;padding-top:3px}
+table.stack td:empty{display:none}
+table.stack td[colspan]{text-align:left;justify-content:flex-start}
+table.stack td select{width:auto;min-width:150px}table.stack td .ic{margin:2px 0 2px 6px}table.stack td[data-label=""]{justify-content:flex-end;flex-wrap:wrap}
+}
 @page{size:8.5in 11in;margin:16mm}
 @media print{html,body{min-height:0!important;height:auto!important;padding:0!important}body::before{display:none}header,main,dialog{display:none!important}body{background:#fff}#cert{display:block!important}.cert{font-size:12pt;min-width:0}.cert .cf,.cert .sig,.cert .ch{break-inside:avoid}.cert.tight{line-height:1.5;padding:18px 30px}.cert.tight p{margin:7px 0}.cert.tight h2.ct{margin:12px 0}.cert.tight .sig{margin-top:34px}.cert.tight .cf{margin-top:16px}.cert.roomy{font-size:13pt;line-height:1.75;padding:28px 38px}.cert.roomy .ch{margin-bottom:6px}.cert.roomy h2.ct{margin:24px 0}.cert.roomy p{margin:14px 0}.cert.roomy .sig{margin-top:60px}.cert.roomy .sig.hs{margin-top:96px}.cert.roomy .cf{margin-top:26px;font-size:.8em}.cert.pg2{break-before:page;margin-top:16px}.cert.pg2 h2.ct{margin:16px 0}.cert.pg2 li{margin:5px 0}@media print{.cert.pg2{margin-top:0}}}
 </style>
@@ -117,6 +147,7 @@ const CL="Certificate of common law",FJ="First time jobseeker certification",SP=
 const TYPES=opt(["Barangay clearance","Certificate of indigency","Certificate of residency","Business clearance",CL,FJ,SP]);
 const PROG=opt(["Immunization","Prenatal","Senior check-up","Nutrition","Family planning"]);
 const BST=[["open","Open"],["mediation","Mediation"],["settled","Settled"],["referred","Referred"]];
+let AQ="",AR="",AA="",APER="7",AP=0;
 let me=null,tab=null,PU=[],RES=[],ROWS={},SH=null,IMP=[],AGT="0-11m, 1-4, 5-9, 10-14, 15-19, 20-59, 60+",AGU="",AGD="",AGHTML="",AGR=null,HHQ="",HHP=0,HHF="",SR=false,PF="",SXF="",GF="",CF="",AF="",RQ="",RP=0,HQ="",HP=0,QQ="",QP=0,UNPAID=[["","— none —"]],MONTH=new Date().toISOString().slice(0,7);
 const CFG={
  residents:{n:"resident",f:()=>[["full_name","Full name","text"],["birthdate","Birthdate","date","opt"],["sex","Sex","select",[["M","Male"],["F","Female"]]],["civil_status","Civil status","select",[["","Not stated"]].concat(opt(CSL)),"opt"],["association","Association (optional)","select",[["","None"]].concat(opt(ASL)),"opt"],["purok_id","Purok","select",PU],["sector","Sector (optional)","text","opt"],["is_pwd","PWD","select",[["false","No"],["true","Yes"]]],["is_solo_parent","Solo parent","select",[["false","No"],["true","Yes"]]],["is_4ps","4Ps beneficiary","select",[["false","No"],["true","Yes"]]]]},
@@ -129,7 +160,7 @@ const CFG={
 };
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const cell=c=>c&&c.h!==undefined?c.h:esc(c);
-const tbl=(h,r,id)=>'<div class="scroll"><table><thead><tr>'+h.map(x=>'<th>'+x+'</th>').join('')+'</tr></thead><tbody'+(id?' id="'+id+'"':'')+'>'+(r.length?r.map(x=>'<tr>'+x.map(c=>'<td>'+cell(c)+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="'+h.length+'">Nothing here yet.</td></tr>')+'</tbody></table></div>';
+const tbl=(h,r,id,cls)=>'<div class="scroll"><table class="'+(cls===undefined?"stack":cls)+'"><thead><tr>'+h.map(x=>'<th>'+x+'</th>').join('')+'</tr></thead><tbody'+(id?' id="'+id+'"':'')+'>'+(r.length?r.map(x=>'<tr>'+x.map((c,i)=>'<td data-label="'+esc(String(h[i]||"").replace(/<[^>]*>/g,""))+'">'+cell(c)+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="'+h.length+'">Nothing here yet.</td></tr>')+'</tbody></table></div>';
 const when=t=>t?new Date(t).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):"Never";
 const peso=n=>"₱"+Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
 const chip=s=>({h:'<span class="chip '+esc(s)+'">'+esc(s)+'</span>'});
@@ -195,7 +226,7 @@ function popHTML(pp){
  const rows=a.map(x=>[x.purok,x.male,x.female,x.total,x.age_0_17,x.age_18_59,x.age_60_up,x.voters,x.pwd,x.solo_parents,x.fourps]);
  rows.push([b("Whole barangay"),b(S("male")),b(S("female")),b(S("total")),b(S("age_0_17")),b(S("age_18_59")),b(S("age_60_up")),b(S("voters")),b(S("pwd")),b(S("solo_parents")),b(S("fourps"))]);
  const miss=S("unspecified"),nb=S("no_birthdate");
- return head+'<div class="acts" style="margin-bottom:10px"><button class="btn ghost" data-popexcel>Download population report (Excel)</button></div>'+tbl(["Purok","Male","Female","Total","Age 0–17","Age 18–59","Age 60+","Voters","PWD","Solo parents","4Ps"],rows)+((miss||nb)?'<p class="note">'+(miss?miss+" resident(s) have no sex recorded. ":"")+(nb?nb+" resident(s) have no birthdate. ":"")+'Fix these so the counts add up.</p>':"")+'</div>'}
+ return head+'<div class="acts" style="margin-bottom:10px"><button class="btn ghost" data-popexcel>Download population report (Excel)</button></div>'+tbl(["Purok","Male","Female","Total","Age 0–17","Age 18–59","Age 60+","Voters","PWD","Solo parents","4Ps"],rows,null,"keep")+((miss||nb)?'<p class="note">'+(miss?miss+" resident(s) have no sex recorded. ":"")+(nb?nb+" resident(s) have no birthdate. ":"")+'Fix these so the counts add up.</p>':"")+'</div>'}
 async function exportPopulation(){
  const r=await sb.rpc("population_summary");if(r.error)return say(r.error.message);
  const a=r.data||[],S=k=>a.reduce((n,x)=>n+ +x[k],0),tot={};
@@ -206,7 +237,7 @@ async function exportPopulation(){
 const lk=q=>"%"+q.replace(/[%_]/g,"")+"%";
 const searchForm=(n,v,clr)=>'<form class="sf" data-f="'+n+'"><input name="q" placeholder="Search by name…" value="'+esc(v)+'" aria-label="Search"><button class="btn ghost">Search</button>'+(v?'<button type="button" class="btn ghost" data-'+clr+'>Clear</button>':'')+'</form>';
 const PS=10;
-function pager(tot,p,k){const from=tot?p*PS+1:0,to=Math.min(tot,p*PS+PS);return'<div class="acts" style="margin-top:10px;align-items:center;flex-wrap:wrap"><button class="btn ghost" data-'+k+'="-1"'+(p?"":" disabled")+'>Previous</button><button class="btn ghost" data-'+k+'="1"'+(to>=tot?" disabled":"")+'>Next</button><span class="note">Showing '+from+'–'+to+' of '+tot+'</span></div>'}
+function pager(tot,p,k,ps){ps=ps||PS;const from=tot?p*ps+1:0,to=Math.min(tot,p*ps+ps);return'<div class="acts" style="margin-top:10px;align-items:center;flex-wrap:wrap"><button class="btn ghost" data-'+k+'="-1"'+(p?"":" disabled")+'>Previous</button><button class="btn ghost" data-'+k+'="1"'+(to>=tot?" disabled":"")+'>Next</button><span class="note">Showing '+from+'–'+to+' of '+tot+'</span></div>'}
 async function reqQuery(){
  let q=sb.from("requests").select("id,ref_no,type,status,approved_at,verify_token,details,residents(full_name,birthdate,sex,puroks(name))",{count:"exact"}).order("requested_at",{ascending:false});
  if(QQ){const t=QQ.replace(/[%_,()*]/g,""),m=await sb.from("residents").select("id").ilike("full_name",lk(t)).limit(100),ids=(m.data||[]).map(x=>x.id);
@@ -224,6 +255,22 @@ function advBtns(x,w){
 function apHTML(a){
  a=a||[];
  return'<div class="panel"><h2>Waiting for your approval ('+a.length+')</h2>'+(a.length?tbl(["Ref","Resident","Request","Date",""],a.map(x=>[x.ref_no,x.residents?.full_name,x.type,when(x.requested_at),{h:abtn(x.id,"approved","Approve")+abtn(x.id,"received","Return")}])):'<p class="note">Nothing is waiting for approval.</p>')+'</div>'}
+const AS=25,AFN={INSERT:"Added",UPDATE:"Edited",DELETE:"Deleted",SIGN_IN:"Signed in",SIGN_OUT:"Signed out",VIEW:"Opened a tab",PRINT:"Printed",EXPORT:"Downloaded",REPORT:"Report",ROLE_CHANGE:"Role changed"};
+const TFN={residents:"Residents",requests:"Certificate requests",blotter:"Blotter",payments:"Receipts",expenses:"Expenses",health_records:"Health files",households:"Households",household_health:"Health survey",profiles:"Accounts",puroks:"Puroks"};
+const aTxt=l=>l.denied?"Blocked":(AFN[l.action]||l.action),aCls=l=>l.denied?"a-bad":({INSERT:"a-add",UPDATE:"a-edit",DELETE:"a-del",EXPORT:"a-out",REPORT:"a-out",PRINT:"a-out",ROLE_CHANGE:"a-role"}[l.action]||"");
+function ago(t){const m=Math.round((Date.now()-new Date(t))/6e4);if(m<1)return"Just now";if(m<60)return m+" min ago";const h=Math.round(m/60);if(h<24)return h+(h===1?" hour":" hours")+" ago";const d=Math.round(h/24);return d+(d===1?" day":" days")+" ago"}
+function aQuery(sel,o){let q=sb.from("audit_log").select(sel,o);
+ if(AR)q=q.eq("user_role",AR);
+ if(AA==="DENIED")q=q.eq("denied",true);else if(AA)q=q.eq("action",AA);
+ if(APER!=="all"){const d=new Date();if(APER==="today")d.setHours(0,0,0,0);else d.setDate(d.getDate()-(APER==="7"?7:30));q=q.gte("created_at",d.toISOString())}
+ if(AQ){const t=AQ.replace(/[%_,()*]/g,"");if(t)q=q.or("user_name.ilike.*"+t+"*,detail.ilike.*"+t+"*,table_name.ilike.*"+t+"*")}
+ return q}
+async function exportAudit(){
+ say("Preparing the activity log…");
+ const rows=await allRows(()=>aQuery("created_at,user_name,user_role,action,table_name,detail,denied").order("created_at",{ascending:false}));if(!rows)return;
+ const list=rows.map(l=>({"Date and time":new Date(l.created_at).toLocaleString(),Name:l.user_name||"",Role:LABEL[l.user_role]||"",Action:aTxt(l),File:TFN[l.table_name]||l.table_name||"",Detail:l.detail||""}));
+ saveXlsx([["Activity log",list,[22,26,16,16,20,44]]],"Talisay-activity-log-"+todayStr()+".xlsx");
+ sb.rpc("log_event",{p_action:"EXPORT",p_detail:"Activity log ("+list.length+")"});say("Downloaded "+list.length+" log entries.",1)}
 const V={
 async dash(){
  const [ms,ne]=range();
@@ -242,9 +289,16 @@ async users(){
  const rows=(u||[]).map(x=>[x.full_name||"(no name)",x.email,{h:'<select data-role="'+x.id+'">'+['','captain','secretary','treasurer','bhw'].map(r=>'<option value="'+r+'"'+((x.role||"")===r?' selected':'')+'>'+(r?LABEL[r]:'No role')+'</option>').join('')+'</select>'},{h:'<input type="checkbox" data-act="'+x.id+'" '+(x.is_active?'checked':'')+' aria-label="Active">'},when(x.last_sign_in_at),{h:'<button class="btn" data-save="'+x.id+'">Save</button>'}]);
  return '<div class="grid"><div class="stat"><b>'+(u||[]).filter(x=>x.is_active).length+'</b><span>Active accounts</span></div><div class="stat"><b>'+(u||[]).filter(x=>!x.is_active).length+'</b><span>Waiting or deactivated</span></div></div><div class="panel"><h2>Who is in the database</h2>'+tbl(["Name","Email","Role","Active","Last sign-in",""],rows)+'<p class="note">New accounts stay locked until you give them a role and tick Active. To remove someone’s access, untick Active.</p></div>'},
 async audit(){
- const {data,error}=await sb.from("audit_log").select("*").order("created_at",{ascending:false}).limit(80);
- if(error)return say(error.message),"";
- return '<div class="panel"><h2>Activity log</h2>'+tbl(["When","Who","Role","Action","File","Detail"],(data||[]).map(l=>[when(l.created_at),l.user_name,LABEL[l.user_role]||"",l.denied?{h:'<span class="bad">DENIED</span>'}:l.action,l.table_name||"",l.detail||""]))+'</div>'},
+ const since=new Date(Date.now()-864e5).toISOString(),hd={count:"exact",head:true};
+ const [r,ev,si,dn]=await Promise.all([aQuery("*",{count:"exact"}).order("created_at",{ascending:false}).range(AP*AS,AP*AS+AS-1),sb.from("audit_log").select("id",hd).gte("created_at",since),sb.from("audit_log").select("id",hd).gte("created_at",since).eq("action","SIGN_IN"),sb.from("audit_log").select("id",hd).gte("created_at",since).eq("denied",true)]);
+ if(r.error)return say(r.error.message),"";
+ const rows=(r.data||[]).map(l=>[{h:'<span title="'+esc(new Date(l.created_at).toLocaleString())+'"><b>'+esc(ago(l.created_at))+'</b><br><span class="note">'+esc(when(l.created_at))+'</span></span>'},{h:esc(l.user_name||"Unknown")+'<br><span class="note">'+esc(LABEL[l.user_role]||"")+'</span>'},{h:'<span class="chip '+aCls(l)+'">'+esc(aTxt(l))+'</span>'},TFN[l.table_name]||l.table_name||"",l.detail||""]);
+ const sel=(id,lab,list,v)=>'<select id="'+id+'" aria-label="'+lab+'" style="width:auto">'+opts(list,v)+'</select>';
+ return '<div class="grid"><div class="stat"><b>'+(ev.count||0)+'</b><span>Activities, last 24 hours</span></div><div class="stat"><b>'+(si.count||0)+'</b><span>Sign-ins, last 24 hours</span></div><div class="stat" style="border-top-color:'+(dn.count?'#B93A24':'#2BB5A0')+'"><b'+(dn.count?' class="bad" style="font-size:1.75rem"':'')+'>'+(dn.count||0)+'</b><span>Blocked attempts, last 24 hours</span></div></div>'+
+ '<div class="panel"><h2>Activity log</h2><p class="note" style="margin:-4px 0 12px">Every sign-in, change, download and blocked attempt, with who did it. Nobody can edit or delete this log.</p>'+
+ '<form class="sf" data-f="asearch"><input name="q" placeholder="Search a person, file or detail…" value="'+esc(AQ)+'" aria-label="Search the log"><button class="btn ghost">Search</button>'+(AQ?'<button type="button" class="btn ghost" data-aclear>Clear</button>':'')+'</form>'+
+ '<div class="acts" style="margin-bottom:12px;flex-wrap:wrap;align-items:center">'+sel("aup","Period",[["today","Today"],["7","Last 7 days"],["30","Last 30 days"],["all","All time"]],APER)+sel("aur","Role",[["","Everyone"]].concat(Object.entries(LABEL)),AR)+sel("aua","Action",[["","All actions"],["DENIED","Blocked attempts only"]].concat(Object.entries(AFN)),AA)+'<button class="btn ghost" data-arefresh>Refresh</button><button class="btn ghost" data-aexcel>Download (Excel)</button></div>'+
+ tbl(["When","Who","Action","File","Detail"],rows,null,"stack")+pager(r.count||0,AP,"apage",AS)+'</div>'},
 async records(){
  const w=me.role==="secretary";
  const [r,q,b,p,oc,sc,pp]=await Promise.all([resQuery(),reqQuery(),sb.from("blotter").select("id,case_no,incident,status,complainant_name,respondent_name,respondent_address,hearing_date,hearing_time").order("created_at",{ascending:false}).limit(60),sb.from("puroks").select("id,name").order("name"),sb.from("requests").select("id",{count:"exact",head:true}).neq("status","released"),sb.from("residents").select("id",{count:"exact",head:true}).lte("birthdate",seniorCut()),sb.rpc("population_summary")]);
@@ -305,7 +359,7 @@ async function draw(){
  const nl=$("nav").scrollLeft;
  $("nav").innerHTML=tabsFor(me.role).map(t=>'<button role="tab" data-t="'+t+'" aria-selected="'+(t===tab)+'">'+MODS[t]+'</button>').join('');$("nav").scrollLeft=nl;
  const same=SH===tab,y=window.scrollY,fk=document.activeElement?.closest?.("form[data-f]")?.dataset.f;
- if(!same)$("view").innerHTML='<p class="note" style="margin-top:16px">Loading…</p>';
+ if(!same)$("view").innerHTML='<div class="sk" aria-label="Loading"><i></i><i></i><i></i></div>';
  const html=await V[tab]();
  $("view").innerHTML=html;SH=tab;
  if(same)window.scrollTo(0,y);
@@ -313,7 +367,7 @@ async function draw(){
 }
 function loginScreen(){
  $("who").innerHTML="";$("nav").innerHTML="";me=null;SH=null;SIG=null;stopRealtime();
- $("view").innerHTML='<div class="panel login"><h2>Staff sign-in</h2><p class="note">Use the account the Punong Barangay created for you.</p><form class="frm" data-f="login"><label>Email<input name="email" type="email" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button class="btn">Sign in</button></form></div>';
+ $("view").innerHTML='<div class="panel login"><img class="lgo" src="'+LOGO+'" alt="" width="84" height="84"><h2>Staff sign-in</h2><p class="note">Use the account the Punong Barangay created for you.</p><form class="frm" data-f="login"><label>Email<input name="email" type="email" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button class="btn">Sign in</button></form></div>';
 }
 let RT=null,RTOK=false,rtT=null;
 function busyNow(){const f=document.activeElement&&document.activeElement.closest?document.activeElement.closest("form[data-f]"):null;return dlg.open||(f&&!/search$/.test(f.dataset.f))}
@@ -382,7 +436,7 @@ async function agShow(){
  const S=k=>C.reduce((n,c)=>n+c[k],0),b=t=>({h:"<b>"+esc(String(t))+"</b>"});
  const body=br.map((g,i)=>[g.label,C[i].M,C[i].F,C[i].M+C[i].F+C[i].U,{h:C[i].list.length?'<button class="ic" data-agnames="'+i+'">Download names</button>':""}]);
  body.push([b("Total"),b(S("M")),b(S("F")),b(S("M")+S("F")+S("U")),""]);
- AGHTML='<p class="note">'+esc(AGR.pu)+', ages as of '+esc(fmtD(AGD))+'. '+rows.length+' resident(s) checked.</p>'+tbl(["Age group","Male","Female","Total",""],body)+
+ AGHTML='<p class="note">'+esc(AGR.pu)+', ages as of '+esc(fmtD(AGD))+'. '+rows.length+' resident(s) checked.</p>'+tbl(["Age group","Male","Female","Total",""],body,null,"keep")+
   ((nob||none||unb||S("U"))?'<p class="note">'+(nob?"No birthdate (not counted): "+nob+". ":"")+(none?"Outside these age groups: "+none+". ":"")+(unb?"Born after this date: "+unb+". ":"")+(S("U")?"No sex recorded (in Total only): "+S("U")+".":"")+'</p>':"")+
   '<div class="acts" style="margin-top:10px"><button class="btn ghost" data-agexcel>Download age report (Excel)</button></div>';
  out.innerHTML=AGHTML}
@@ -545,6 +599,7 @@ document.addEventListener("submit",async e=>{
  e.preventDefault();const f=e.target,n=f.dataset.f,o=Object.fromEntries(new FormData(f));
  if(n==="login"){const r=await sb.auth.signInWithPassword({email:o.email,password:o.password});if(r.error)return say("Sign-in failed. Check your email and password.");say("");await boot();sb.rpc("log_event",{p_action:"SIGN_IN"});return}
  if(n==="rsearch"){RQ=(o.q||"").trim();RP=0;return draw()}
+ if(n==="asearch"){AQ=(o.q||"").trim();AP=0;return draw()}
  if(n==="hsearch"){HQ=(o.q||"").trim();HP=0;return draw()}
  if(n==="qsearch"){QQ=(o.q||"").trim();QP=0;return draw()}
  if(n==="hhsearch"){HHQ=(o.q||"").trim();HHP=0;return draw()}
@@ -588,6 +643,10 @@ document.addEventListener("click",async e=>{
  if(b.dataset.qpage){QP=Math.max(0,QP+ +b.dataset.qpage);return draw()}
  if(b.dataset.hpage){HP=Math.max(0,HP+ +b.dataset.hpage);return draw()}
  if("qclear" in b.dataset){QQ="";QP=0;return draw()}
+ if("aclear" in b.dataset){AQ="";AP=0;return draw()}
+ if("arefresh" in b.dataset)return draw();
+ if("aexcel" in b.dataset)return exportAudit();
+ if(b.dataset.apage){AP=Math.max(0,AP+ +b.dataset.apage);return draw()}
  if("rclear" in b.dataset){RQ="";RP=0;return draw()}
  if("hclear" in b.dataset){HQ="";HP=0;return draw()}
  if("agshow" in b.dataset)return agShow();
@@ -615,6 +674,9 @@ document.addEventListener("change",e=>{
  if(e.target.id==="agtxt"){AGT=e.target.value;const ps=$("agpre");if(ps)ps.value=AGPRE.some(p=>p[0]===AGT)?AGT:""}
  if(e.target.id==="agpu")AGU=e.target.value;
  if(e.target.id==="agdt")AGD=e.target.value||todayStr();
+ if(e.target.id==="aup"){APER=e.target.value;AP=0;draw()}
+ if(e.target.id==="aur"){AR=e.target.value;AP=0;draw()}
+ if(e.target.id==="aua"){AA=e.target.value;AP=0;draw()}
  if(e.target.id==="hhpf"){HHF=e.target.value;HHP=0;draw()}
  if(e.target.id==="raf"){AF=e.target.value;RP=0;draw()}
  if(e.target.id==="rcf"){CF=e.target.value;RP=0;draw()}
@@ -624,6 +686,7 @@ document.addEventListener("change",e=>{
  if(e.target.id==="mo"&&e.target.value){MONTH=e.target.value;draw()}
  if(e.target.id==="xl"&&e.target.files[0]){parseImport(e.target.files[0]);e.target.value=""}});
 dlg.addEventListener("click",e=>{if(e.target===dlg)dlg.close()});
+$("msg").addEventListener("click",()=>say(""));
 sb.auth.onAuthStateChange(ev=>{if(ev==="SIGNED_OUT")loginScreen()});
 boot();
 </script>
