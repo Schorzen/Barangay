@@ -115,6 +115,7 @@ table.stack td:empty{display:none}
 table.stack td[colspan]{text-align:left;justify-content:flex-start}
 table.stack td select{width:auto;min-width:150px}table.stack td .ic{margin:2px 0 2px 6px}table.stack td[data-label=""]{justify-content:flex-end;flex-wrap:wrap}
 }
+@media (min-width:641px){table.stack td:last-child{white-space:normal;min-width:130px}table.stack td:last-child .note{display:block;margin-bottom:4px}}
 @page{size:8.5in 11in;margin:16mm}
 @media print{html,body{min-height:0!important;height:auto!important;padding:0!important}body::before{display:none}header,main,dialog{display:none!important}body{background:#fff}#cert{display:block!important}.cert{font-size:12pt;min-width:0}.cert .cf,.cert .sig,.cert .ch{break-inside:avoid}.cert.tight{line-height:1.5;padding:18px 30px}.cert.tight p{margin:7px 0}.cert.tight h2.ct{margin:12px 0}.cert.tight .sig{margin-top:34px}.cert.tight .cf{margin-top:16px}.cert.roomy{font-size:13pt;line-height:1.75;padding:28px 38px}.cert.roomy .ch{margin-bottom:6px}.cert.roomy h2.ct{margin:24px 0}.cert.roomy p{margin:14px 0}.cert.roomy .sig{margin-top:60px}.cert.roomy .sig.hs{margin-top:96px}.cert.roomy .cf{margin-top:26px;font-size:.8em}.cert.pg2{break-before:page;margin-top:16px}.cert.pg2 h2.ct{margin:16px 0}.cert.pg2 li{margin:5px 0}@media print{.cert.pg2{margin-top:0}}}
 </style>
@@ -133,7 +134,7 @@ const SB_KEY="sb_publishable_nyThP0h3QcRKGlRiqMinaQ_yNKI2Ej4";
 const sb=supabase.createClient(SB_URL,SB_KEY);
 const $=i=>document.getElementById(i);
 const LABEL={captain:"Punong Barangay",secretary:"Secretary",treasurer:"Treasurer",bhw:"BHW"};
-const MODS={dash:"Dashboard",users:"Users",audit:"Activity log",records:"Records",households:"Households",finance:"Finance",health:"Health"};
+const MODS={dash:"Dashboard",users:"Users",audit:"Activity log",bin:"Deleted items",records:"Records",households:"Households",finance:"Finance",health:"Health"};
 const NEXT={received:"verified",verified:"approved",approved:"released"};
 const opt=a=>a.map(x=>[x,x]);
 const YNO=[["false","No"],["true","Yes"]],NS=a=>[["","Not stated"]].concat(opt(a));
@@ -147,7 +148,7 @@ const CL="Certificate of common law",FJ="First time jobseeker certification",SP=
 const TYPES=opt(["Barangay clearance","Certificate of indigency","Certificate of residency","Business clearance",CL,FJ,SP]);
 const PROG=opt(["Immunization","Prenatal","Senior check-up","Nutrition","Family planning"]);
 const BST=[["open","Open"],["mediation","Mediation"],["settled","Settled"],["referred","Referred"]];
-let AQ="",AR="",AA="",APER="7",AP=0;
+let AQ="",AR="",AA="",APER="7",AP=0,BIN=false;
 let me=null,tab=null,PU=[],RES=[],ROWS={},SH=null,IMP=[],AGT="0-11m, 1-4, 5-9, 10-14, 15-19, 20-59, 60+",AGU="",AGD="",AGHTML="",AGR=null,HHQ="",HHP=0,HHF="",SR=false,PF="",SXF="",GF="",CF="",AF="",RQ="",RP=0,HQ="",HP=0,QQ="",QP=0,UNPAID=[["","— none —"]],MONTH=new Date().toISOString().slice(0,7);
 const CFG={
  residents:{n:"resident",f:()=>[["full_name","Full name","text"],["birthdate","Birthdate","date","opt"],["sex","Sex","select",[["M","Male"],["F","Female"]]],["civil_status","Civil status","select",[["","Not stated"]].concat(opt(CSL)),"opt"],["association","Association (optional)","select",[["","None"]].concat(opt(ASL)),"opt"],["purok_id","Purok","select",PU],["sector","Sector (optional)","text","opt"],["is_pwd","PWD","select",[["false","No"],["true","Yes"]]],["is_solo_parent","Solo parent","select",[["false","No"],["true","Yes"]]],["is_4ps","4Ps beneficiary","select",[["false","No"],["true","Yes"]]]]},
@@ -216,8 +217,8 @@ async function exportRequests(){
  else if(per==="year"){a=new Date(t.getFullYear(),0,1);b=new Date(t.getFullYear()+1,0,1);tag=String(t.getFullYear())}
  say("Preparing the requests list…");
  const rows=await allRows(()=>{let q=sb.from("requests").select("ref_no,type,status,requested_at,approved_at,residents(full_name,puroks(name))").order("requested_at");if(a)q=q.gte("requested_at",a.toISOString()).lt("requested_at",b.toISOString());return q});if(!rows)return;
- const list=rows.map(x=>({"Ref no.":x.ref_no,Resident:x.residents?.full_name||"",Purok:x.residents?.puroks?.name||"",Certificate:x.type,Status:x.status,"Date requested":ymd(new Date(x.requested_at)),"Approved on":x.approved_at?ymd(new Date(x.approved_at)):""}));
- saveXlsx([["Requests",list,[16,30,18,26,12,15,14]],["By certificate",count(list,x=>x.Certificate).map(k=>({Certificate:k[0],Total:k[1]}))],["By status",count(list,x=>x.Status).map(k=>({Status:k[0],Total:k[1]}))]],"Talisay-requests-"+tag+".xlsx");
+ const list=rows.map(x=>({"Ref no.":x.ref_no,Resident:x.residents?.full_name||"",Purok:x.residents?.puroks?.name||"",Certificate:x.type,Status:x.status,"Date requested":ymd(new Date(x.requested_at)),"Approved on":x.approved_at?ymd(new Date(x.approved_at)):"","Valid until":x.approved_at?ymd(expOf(x)):""}));
+ saveXlsx([["Requests",list,[16,30,18,26,12,15,14,14]],["By certificate",count(list,x=>x.Certificate).map(k=>({Certificate:k[0],Total:k[1]}))],["By status",count(list,x=>x.Status).map(k=>({Status:k[0],Total:k[1]}))]],"Talisay-requests-"+tag+".xlsx");
  sb.rpc("log_event",{p_action:"EXPORT",p_detail:"Requests "+tag+" ("+list.length+")"});say("Downloaded "+list.length+" requests.",1)}
 function popHTML(pp){
  const head='<div class="panel"><h2>Population summary</h2>';
@@ -255,9 +256,13 @@ function advBtns(x,w){
 function apHTML(a){
  a=a||[];
  return'<div class="panel"><h2>Waiting for your approval ('+a.length+')</h2>'+(a.length?tbl(["Ref","Resident","Request","Date",""],a.map(x=>[x.ref_no,x.residents?.full_name,x.type,when(x.requested_at),{h:abtn(x.id,"approved","Approve")+abtn(x.id,"received","Return")}])):'<p class="note">Nothing is waiting for approval.</p>')+'</div>'}
-const AS=25,AFN={INSERT:"Added",UPDATE:"Edited",DELETE:"Deleted",SIGN_IN:"Signed in",SIGN_OUT:"Signed out",VIEW:"Opened a tab",PRINT:"Printed",EXPORT:"Downloaded",REPORT:"Report",ROLE_CHANGE:"Role changed"};
+const longD=d=>d.toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
+function addYear(d){const e=new Date(d.getFullYear()+1,d.getMonth(),d.getDate());if(e.getMonth()!==d.getMonth())e.setDate(0);return e}
+const expOf=r=>r&&r.approved_at?addYear(new Date(r.approved_at)):null,isExp=r=>{const e=expOf(r);if(!e)return false;e.setHours(23,59,59,999);return new Date()>e};
+const AS=25,AFN={INSERT:"Added",UPDATE:"Edited",DELETE:"Deleted",SIGN_IN:"Signed in",SIGN_OUT:"Signed out",VIEW:"Opened a tab",PRINT:"Printed",EXPORT:"Downloaded",REPORT:"Report",ROLE_CHANGE:"Role changed",RESTORE:"Restored"};
+const bin_ok=t=>({secretary:["residents","requests","blotter","households"],treasurer:["payments","expenses"],bhw:["health_records","households"]}[me.role]||[]).includes(t);
 const TFN={residents:"Residents",requests:"Certificate requests",blotter:"Blotter",payments:"Receipts",expenses:"Expenses",health_records:"Health files",households:"Households",household_health:"Health survey",profiles:"Accounts",puroks:"Puroks"};
-const aTxt=l=>l.denied?"Blocked":(AFN[l.action]||l.action),aCls=l=>l.denied?"a-bad":({INSERT:"a-add",UPDATE:"a-edit",DELETE:"a-del",EXPORT:"a-out",REPORT:"a-out",PRINT:"a-out",ROLE_CHANGE:"a-role"}[l.action]||"");
+const aTxt=l=>l.denied?"Blocked":(AFN[l.action]||l.action),aCls=l=>l.denied?"a-bad":({INSERT:"a-add",UPDATE:"a-edit",DELETE:"a-del",EXPORT:"a-out",REPORT:"a-out",PRINT:"a-out",ROLE_CHANGE:"a-role",RESTORE:"a-add"}[l.action]||"");
 function ago(t){const m=Math.round((Date.now()-new Date(t))/6e4);if(m<1)return"Just now";if(m<60)return m+" min ago";const h=Math.round(m/60);if(h<24)return h+(h===1?" hour":" hours")+" ago";const d=Math.round(h/24);return d+(d===1?" day":" days")+" ago"}
 function aQuery(sel,o){let q=sb.from("audit_log").select(sel,o);
  if(AR)q=q.eq("user_role",AR);
@@ -299,6 +304,14 @@ async audit(){
  '<form class="sf" data-f="asearch"><input name="q" placeholder="Search a person, file or detail…" value="'+esc(AQ)+'" aria-label="Search the log"><button class="btn ghost">Search</button>'+(AQ?'<button type="button" class="btn ghost" data-aclear>Clear</button>':'')+'</form>'+
  '<div class="acts" style="margin-bottom:12px;flex-wrap:wrap;align-items:center">'+sel("aup","Period",[["today","Today"],["7","Last 7 days"],["30","Last 30 days"],["all","All time"]],APER)+sel("aur","Role",[["","Everyone"]].concat(Object.entries(LABEL)),AR)+sel("aua","Action",[["","All actions"],["DENIED","Blocked attempts only"]].concat(Object.entries(AFN)),AA)+'<button class="btn ghost" data-arefresh>Refresh</button><button class="btn ghost" data-aexcel>Download (Excel)</button></div>'+
  tbl(["When","Who","Action","File","Detail"],rows,null,"stack")+pager(r.count||0,AP,"apage",AS)+'</div>'},
+async bin(){
+ const r=await sb.from("deleted_records").select("*").order("deleted_at",{ascending:false}).limit(200);
+ if(r.error)return say(r.error.message),"";
+ const rows=r.data||[],ids=[...new Set(rows.map(x=>x.data&&x.data.resident_id).filter(Boolean))],nm=ids.length?await namesFor(ids):{},can=me.role!=="captain";
+ const left=t=>{const d=Math.ceil((new Date(t)-Date.now())/864e5);return d<=1?"Less than a day":d+" days"};
+ const lab=x=>{const d=x.data||{},n=nm[d.resident_id];return(x.label||"(no name)")+(d.type?" · "+d.type:"")+(n?" · "+n:"")};
+ return '<div class="grid"><div class="stat"><b>'+rows.length+'</b><span>Deleted items still kept</span></div></div><div class="panel"><h2>Deleted items</h2><p class="note" style="margin:-4px 0 12px">Anything deleted stays here for 30 days, so a mistake can be undone. After 30 days it is removed for good.'+(can?" A restored certificate request starts again as “received” and must be approved again.":" Only the staff who own the file can restore an item.")+'</p>'+
+ tbl(["Deleted","File","Item","Kept for",""],rows.map(x=>[{h:'<b>'+esc(ago(x.deleted_at))+'</b><br><span class="note">'+esc(when(x.deleted_at))+'<br>by '+esc(x.deleted_by_name||"Supabase dashboard")+'</span>'},TFN[x.table_name]||x.table_name,lab(x),left(x.expires_at),{h:can&&bin_ok(x.table_name)?'<button class="ic ok" data-restore="'+x.id+'">Restore</button>':""}]))+'</div>'},
 async records(){
  const w=me.role==="secretary";
  const [r,q,b,p,oc,sc,pp]=await Promise.all([resQuery(),reqQuery(),sb.from("blotter").select("id,case_no,incident,status,complainant_name,respondent_name,respondent_address,hearing_date,hearing_time").order("created_at",{ascending:false}).limit(60),sb.from("puroks").select("id,name").order("name"),sb.from("requests").select("id",{count:"exact",head:true}).neq("status","released"),sb.from("residents").select("id",{count:"exact",head:true}).lte("birthdate",seniorCut()),sb.rpc("population_summary")]);
@@ -306,7 +319,7 @@ async records(){
  keep("residents",r.data);keep("requests",q.data);keep("blotter",b.data);
  return '<div class="grid"><div class="stat"><b>'+(r.count||0)+'</b><span>'+(RQ||SR||PF||SXF||GF||CF||AF?"Matching residents":"Residents")+'</span></div><div class="stat"><b>'+(oc.count||0)+'</b><span>Open requests</span></div><div class="stat"><b>'+(b.data||[]).filter(x=>x.status==="open").length+'</b><span>Open blotter cases</span></div><div class="stat"><b>'+(sc.count||0)+'</b><span>Senior citizens (60+)</span></div></div>'+
  popHTML(pp)+'<div class="panel"><h2>Residents</h2>'+addForm("residents",w,"Add resident")+(w?'<div class="acts" style="margin-bottom:10px;flex-wrap:wrap"><label class="btn ghost" style="cursor:pointer">Import from Excel / CSV<input id="xl" type="file" accept=".xlsx,.xls,.csv" hidden></label><button class="btn ghost" data-tpl>Download template</button></div>':"")+searchForm("rsearch",RQ,"rclear")+seniorBar()+tbl(["Name","Birthdate","Age","Sex","Civil status","Purok","Sector / association",""],(r.data||[]).map(x=>[x.full_name,x.birthdate,ageOf(x.birthdate),x.sex,x.civil_status,x.puroks?.name,{h:(ageOf(x.birthdate)!==""&&ageOf(x.birthdate)>=60?'<span class="chip approved">Senior</span> ':"")+(x.is_pwd?'<span class="chip verified">PWD</span> ':"")+(x.is_solo_parent?'<span class="chip received">Solo parent</span> ':"")+(x.is_4ps?'<span class="chip released">4Ps</span> ':"")+(x.association?'<span class="chip approved">'+esc(x.association)+'</span> ':"")+esc(x.sector||"")},{h:act("residents",x.id,w)}]),"rb")+pager(r.count||0,RP,"rpage")+'</div>'+
- '<div class="panel"><h2>Certificate requests</h2>'+addForm("requests",w,"New request")+searchForm("qsearch",QQ,"qclear")+reqExportBar()+tbl(["Ref","Resident","Request","Status","Approved on",""],(q.data||[]).map(x=>[x.ref_no,x.residents?.full_name,x.type,chip(x.status),x.approved_at?when(x.approved_at):"",{h:(["approved","released"].includes(x.status)&&(w||me.role==="captain")?'<button class="ic" data-print="'+x.id+'">Print</button>':"")+advBtns(x,w)+act("requests",x.id,w&&!["approved","released"].includes(x.status))}]))+pager(q.count||0,QP,"qpage")+'</div>'+
+ '<div class="panel"><h2>Certificate requests</h2>'+addForm("requests",w,"New request")+searchForm("qsearch",QQ,"qclear")+reqExportBar()+tbl(["Ref","Resident","Request","Status","Valid until",""],(q.data||[]).map(x=>[x.ref_no,x.residents?.full_name,x.type,chip(x.status),x.approved_at?{h:'<span title="Approved on '+esc(longD(new Date(x.approved_at)))+'">'+esc(expOf(x).toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"}))+'</span>'+(isExp(x)?' <span class="chip a-del">Expired</span>':"")}:"",{h:(["approved","released"].includes(x.status)&&(w||me.role==="captain")?'<button class="ic" data-print="'+x.id+'">Print</button>':"")+advBtns(x,w)+act("requests",x.id,w&&!["approved","released"].includes(x.status))}]))+pager(q.count||0,QP,"qpage")+'</div>'+
  ''+upHTML(upcoming(b.data))+'<div class="panel"><h2>Blotter</h2>'+addForm("blotter",w,"Add case")+tbl(["Case","Complainant","Respondent","Incident","Hearing","Status",""],(b.data||[]).map(x=>[x.case_no,x.complainant_name,x.respondent_name,x.incident,x.hearing_date?x.hearing_date+(x.hearing_time?" "+x.hearing_time:""):"",x.status,{h:((w||me.role==="captain")?'<button class="ic" data-summ="'+x.id+'">Documents</button>':"")+act("blotter",x.id,w)}]))+'</div>'},
 async finance(){
  const w=me.role==="treasurer";
@@ -353,7 +366,7 @@ async health(){
  return agPanel()+'<div class="panel"><h2>Health files</h2>'+addForm("health_records",w,"Add record")+searchForm("hsearch",HQ,"hclear")+tbl(["Name","Program","Visit","Status","Notes",""],(h.data||[]).map(x=>[nm[x.resident_id]||"",x.program,x.visit_date,x.status,x.notes,{h:act("health_records",x.id,w)}]))+pager(h.count||0,HP,"hpage")+'<p class="note">Medical details are visible only to the BHW and the Punong Barangay.</p></div>'}
 };
 
-function tabsFor(r){return r==="captain"?["dash","users","audit","records","households","finance","health"]:{secretary:["records","households"],treasurer:["finance"],bhw:["health","households"]}[r]||[]}
+function tabsFor(r){const t=r==="captain"?["dash","users","audit","records","households","finance","health"]:{secretary:["records","households"],treasurer:["finance"],bhw:["health","households"]}[r]||[];return BIN&&t.length?t.concat(["bin"]):t}
 async function draw(){
  $("who").innerHTML='<div class="me"><b>'+esc(me.full_name)+'</b>'+LABEL[me.role]+'</div><button class="btn ghost" id="out" style="margin-top:6px;float:right">Sign out</button>';
  const nl=$("nav").scrollLeft;
@@ -458,9 +471,9 @@ async function verifyScreen(tok){
  $("who").innerHTML="";$("nav").innerHTML="";me=null;
  $("view").innerHTML='<div class="panel login"><p class="note">Checking certificate…</p></div>';
  const r=await sb.rpc("verify_certificate",{p_token:tok}),x=r.data&&r.data[0];
- const good=x&&["approved","released"].includes(x.status)&&x.approved_at,row=(a,b)=>'<div class="vrow"><span class="note">'+a+'</span><b>'+esc(b)+'</b></div>';
+ const good=x&&["approved","released"].includes(x.status)&&x.approved_at,gone=good&&isExp(x),row=(a,b)=>'<div class="vrow"><span class="note">'+a+'</span><b>'+esc(b)+'</b></div>';
  $("view").innerHTML='<div class="panel login" style="text-align:center">'+(good?
-  '<h2 style="color:#0F7A69">✔ Valid certificate</h2><p>This certificate was approved by the Punong Barangay of Barangay Talisay, Santa Fe, Cebu.</p>'+row("Reference no.",x.ref_no)+row("Certificate",x.cert_type)+row("Issued to",x.holder)+row("Approved on",new Date(x.approved_at).toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"}))+'<p class="note" style="margin-top:12px">Compare these details with the paper. If they do not match, do not accept the certificate and contact the barangay hall.</p>'
+  (gone?'<h2 style="color:#B93A24">⚠ Expired certificate</h2><p>This certificate was genuine, but it expired on <b>'+esc(longD(expOf(x)))+'</b> and is no longer valid. Ask the holder for a new one.</p>':'<h2 style="color:#0F7A69">✔ Valid certificate</h2><p>This certificate was approved by the Punong Barangay of Barangay Talisay, Santa Fe, Cebu.</p>')+row("Reference no.",x.ref_no)+row("Certificate",x.cert_type)+row("Issued to",x.holder)+row("Approved on",longD(new Date(x.approved_at)))+row(gone?"Expired on":"Valid until",longD(expOf(x)))+'<p class="note" style="margin-top:12px">Compare these details with the paper. If they do not match, do not accept the certificate and contact the barangay hall.</p>'
   :'<h2 style="color:#B93A24">✖ Not valid</h2><p>No approved certificate matches this code. It may be fake, cancelled, or not yet approved. Please contact the Barangay Talisay hall.</p>')+
   '<p class="note"><a href="'+location.pathname+'">Staff sign-in</a></p></div>'}
 async function boot(){
@@ -470,7 +483,7 @@ async function boot(){
  const {data:p}=await sb.from("profiles").select("*").eq("id",session.user.id).single();
  if(!p||!p.is_active||!p.role){
   $("view").innerHTML='<div class="panel login"><h2>Waiting for approval</h2><p>Your account is not active yet. Ask the Punong Barangay to give you a role.</p><button class="btn" id="out">Sign out</button></div>';return}
- me=p;SH=null;tab=tabsFor(p.role)[0];draw();startRealtime();updateTitle();
+ me=p;SH=null;BIN=!(await sb.from("deleted_records").select("id",{count:"exact",head:true})).error;tab=tabsFor(p.role)[0];draw();startRealtime();updateTitle();
 }
 function range(){const [y,m]=MONTH.split("-").map(Number),n=new Date(y,m,1);return[MONTH+"-01",n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0")+"-01"]}
 async function report(){
@@ -531,18 +544,18 @@ function certHTML(r,purpose,pv){
   "Certificate of residency":"This is to certify that "+who+"is a bona fide resident of "+esc(p.puroks?.name||"this barangay")+", Barangay Talisay, Santa Fe, Cebu.</p><p>This certification is issued upon the request of the above-named person for "+pu+".",
   "Business clearance":"This is to certify that "+who+home+", is granted clearance by this office to operate a business within this barangay, subject to existing laws and ordinances.</p><p>This clearance is issued upon the request of the above-named person for "+pu+"."
  };
- const d=new Date();
+ const d=r.approved_at?new Date(r.approved_at):new Date();
  const ext=r._ext||"",bl="____________",ptn=r.details?"<b>"+esc(r.details.toUpperCase())+"</b>":"<b>"+bl+"</b>";
  BODY[CL]="This is to certify that "+who+"and "+ptn+", both of legal age, are residents of "+esc(p.puroks?.name||"this barangay")+", Barangay Talisay, Santa Fe, Cebu, and are living together as common-law husband and wife (live-in partners)"+(ext?" for <b>"+esc(ext)+"</b>":"")+", based on the records and knowledge of this office.</p><p>This certification is issued upon the request of the above-named person for "+pu+".";
  BODY[SP]="This is to certify that "+who+home+", is a solo parent who is raising "+(r.details?"the child/children <b>"+esc(r.details)+"</b>":"his/her child/children")+" as the sole provider and caregiver, based on the records and knowledge of this office.</p><p>This certification is issued upon the request of the above-named person for "+pu+", including the availment of benefits under the Expanded Solo Parents Welfare Act (RA 11861).";
  BODY[FJ]="This is to certify that "+who+home+", is a qualified availee of the <b>First Time Jobseekers Assistance Act (Republic Act No. 11261)</b>.</p><p>This further certifies that the holder or bearer was informed of his/her rights, including the duties and responsibilities accorded by RA 11261, through the Oath of Undertaking he/she has signed and executed in the presence of a barangay official.</p><p>This certification is valid for one (1) year from the date of issuance and may be used only once, for any government document or transaction covered by the law";
  const oath=!r.type||r.type!==FJ?"":'<div class="cert tight pg2">'+WM+HEAD("OFFICE OF THE PUNONG BARANGAY")+'<h2 class="ct">OATH OF UNDERTAKING</h2><p>I, <b>'+nm+'</b>'+(age!==""?', '+age+' years old':'')+', a resident of '+esc(p.puroks?.name||"this barangay")+', Barangay Talisay, Santa Fe, Cebu, for <b>____</b> year(s), availing the benefits of Republic Act 11261, otherwise known as the First Time Jobseekers Assistance Act, do hereby declare, agree and undertake to abide and be bound by the following:</p><ol style="line-height:inherit;margin:8px 0 8px 22px;text-align:justify"><li>That this is the first time that I will actually look for a job, and therefore, I request that a Barangay Certification be issued in my favor to avail the benefits of the law;</li><li>That I am aware that the benefit and privilege under the said law shall be enjoyed by me only once;</li><li>That I will inform and/or report to the Barangay, personally, through text or other means, or through my family or relatives, once I get employed;</li><li>That I am not a beneficiary of the JobStart Program under RA 10869 and other laws that give similar exemptions for the documents or transactions covered by RA 11261;</li><li>That if I am granted the certification, I will not use it in any fraud, nor forge or falsify any document for the purpose of obtaining the benefits of the law; and</li><li>That I will comply with my duties and responsibilities under the law. Should I violate any provision of this Oath of Undertaking and the law, I may be penalized as provided by law.</li></ol><p>Signed this '+ord(d.getDate())+' day of '+MONTHS[d.getMonth()]+', '+d.getFullYear()+' at Barangay Talisay, Santa Fe, Cebu, Philippines.</p><div style="display:flex;justify-content:space-between;gap:20px;margin-top:30px;text-align:center"><div style="width:46%;border-top:1px solid #000;padding-top:4px"><b>'+nm+'</b><br>First Time Jobseeker<br><small>(Signature over printed name)</small></div><div style="width:46%;border-top:1px solid #000;padding-top:4px"><b>HON. '+esc(PB)+'</b><br>Punong Barangay<br><small>(Witnessed by)</small></div></div></div>';
- const page1='<div class="cert '+(r.type===FJ?'tight':'roomy')+'">'+WM+''+HEAD("OFFICE OF THE PUNONG BARANGAY")+'<h2 class="ct">'+esc(TITLES[r.type]||r.type.toUpperCase())+'</h2><p class="n"><b>TO WHOM IT MAY CONCERN:</b></p><p>'+(BODY[r.type]||"")+'</p><p>Issued this '+ord(d.getDate())+' day of '+MONTHS[d.getMonth()]+', '+d.getFullYear()+' at Barangay Talisay, Santa Fe, Cebu, Philippines.</p><div class="sig'+(r._sig?' hs':'')+'">'+(r._sig?(pv?'<span class="signph">Signature prints here</span>':'<img class="signimg" alt="" draggable="false" src="'+r._sig+'">'):'')+'<b>HON. '+esc(PB)+'</b><br>Punong Barangay</div><div class="cf">'+qr(r,d)+'Ref. No.: '+esc(r.ref_no)+'<br>O.R. No.: '+(r._or?esc(r._or.or_no):"____________")+' &nbsp; Amount paid: '+(r._or?peso(r._or.amount):"____________")+'<br>Prepared by: '+esc(me.full_name)+(r.approved_at?'<br>Approved by the Punong Barangay on '+new Date(r.approved_at).toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"}):"")+'<br>Scan the QR code to check that this certificate is genuine.</div></div>';return page1+oath}
+ const page1='<div class="cert '+(r.type===FJ?'tight':'roomy')+'">'+WM+''+HEAD("OFFICE OF THE PUNONG BARANGAY")+'<h2 class="ct">'+esc(TITLES[r.type]||r.type.toUpperCase())+'</h2><p class="n"><b>TO WHOM IT MAY CONCERN:</b></p><p>'+(BODY[r.type]||"")+'</p><p>Issued this '+ord(d.getDate())+' day of '+MONTHS[d.getMonth()]+', '+d.getFullYear()+' at Barangay Talisay, Santa Fe, Cebu, Philippines.</p><div class="sig'+(r._sig?' hs':'')+'">'+(r._sig?(pv?'<span class="signph">Signature prints here</span>':'<img class="signimg" alt="" draggable="false" src="'+r._sig+'">'):'')+'<b>HON. '+esc(PB)+'</b><br>Punong Barangay</div><div class="cf">'+qr(r,d)+'Ref. No.: '+esc(r.ref_no)+'<br>O.R. No.: '+(r._or?esc(r._or.or_no):"____________")+' &nbsp; Amount paid: '+(r._or?peso(r._or.amount):"____________")+'<br>Prepared by: '+esc(me.full_name)+(r.approved_at?'<br>Approved by the Punong Barangay on '+longD(new Date(r.approved_at))+'<br>Valid for one (1) year, until <b>'+longD(expOf(r))+'</b>':"")+'<br>Scan the QR code to check that this certificate is genuine.</div></div>';return page1+oath}
 async function openPrint(id){
  const r=ROWS.requests[id];if(!r)return;
  const x=await sb.rpc("receipt_for",{p_ref:r.ref_no});r._or=(x.data&&x.data[0])||null;r._sig=["approved","released"].includes(r.status)?await getSig():"";r._ext="";
  dlg.className="wide";
- dlg.innerHTML='<h2>Print certificate</h2>'+(r.type===FJ?"":'<label>Purpose<input id="pur" data-rid="'+id+'" value="any legal purpose"></label>')+(r.type===CL?'<label>Years living together (optional)<input id="ext" data-rid="'+id+'" placeholder="for example, 5 years"></label>':"")+'<div class="prev" id="prev">'+certHTML(r,"any legal purpose",true)+'</div><div class="acts"><button class="btn" data-doprint="'+id+'">Print</button><button type="button" class="btn ghost" data-close>Close</button></div><p class="note">Tip: in the print window you can choose “Save as PDF” instead of a printer.</p>'+(r._sig?"":'<p class="bad">The Punong Barangay’s signature could not be loaded: '+esc(SIGERR||"unknown reason")+'. The certificate will print without it.</p>');
+ dlg.innerHTML='<h2>Print certificate</h2>'+(r.type===FJ?"":'<label>Purpose<input id="pur" data-rid="'+id+'" value="any legal purpose"></label>')+(r.type===CL?'<label>Years living together (optional)<input id="ext" data-rid="'+id+'" placeholder="for example, 5 years"></label>':"")+'<div class="prev" id="prev">'+certHTML(r,"any legal purpose",true)+'</div><div class="acts">'+(isExp(r)?'<button class="btn" disabled>Print</button>':'<button class="btn" data-doprint="'+id+'">Print</button>')+'<button type="button" class="btn ghost" data-close>Close</button></div>'+(isExp(r)?'<p class="bad">This certificate expired on '+esc(longD(expOf(r)))+'. Create a new request instead of printing it again.</p>':"")+'<p class="note">Tip: in the print window you can choose “Save as PDF” instead of a printer.</p>'+(r._sig?"":'<p class="bad">The Punong Barangay’s signature could not be loaded: '+esc(SIGERR||"unknown reason")+'. The certificate will print without it.</p>');
  dlg.showModal()}
 function doPrint(id){
  const r=ROWS.requests[id];if(!r)return;
@@ -595,8 +608,8 @@ function openEdit(t,id){
  const row=ROWS[t][id];if(!row)return;
  dlg.className="";dlg.innerHTML='<h2>Edit '+CFG[t].n+'</h2><form class="frm one" data-f="edit|'+t+'|'+id+'">'+CFG[t].f(true).map(f=>fld(f,typeof row[f[0]]==="boolean"?String(row[f[0]]):row[f[0]])).join('')+'<div class="acts"><button class="btn">Save changes</button><button type="button" class="btn ghost" data-close>Cancel</button></div></form>';dlg.showModal()}
 function openDel(t,id){
- const r=ROWS[t][id]||{},name=r.full_name||r.ref_no||r.case_no||r.or_no||r.description||r.program||(r.household_no?"Household "+r.household_no:r.address)||"this record";
- dlg.className="";dlg.innerHTML='<h2>Delete '+CFG[t].n+'?</h2><p>“'+esc(name)+'” will be removed. This action is recorded in the activity log and can’t be undone.</p><form class="frm one" data-f="del|'+t+'|'+id+'"><div class="acts"><button class="btn danger">Yes, delete</button><button type="button" class="btn ghost" data-close>Cancel</button></div></form>';dlg.showModal()}
+ const r=ROWS[t][id]||{},name=(r.full_name||(r.ref_no?r.ref_no+(r.residents?.full_name?" · "+r.residents.full_name:""):""))||r.case_no||r.or_no||r.description||r.program||(r.household_no?"Household "+r.household_no:r.address)||"this record";
+ dlg.className="";dlg.innerHTML='<h2>Delete '+CFG[t].n+'?</h2><p>“'+esc(name)+'” will be removed. '+(BIN?'It goes to “Deleted items” and can be restored for 30 days.':'This action is recorded in the activity log and can’t be undone.')+'</p><form class="frm one" data-f="del|'+t+'|'+id+'"><div class="acts"><button class="btn danger">Yes, delete</button><button type="button" class="btn ghost" data-close>Cancel</button></div></form>';dlg.showModal()}
 document.addEventListener("contextmenu",e=>{if(e.target.closest&&e.target.closest(".cert,#cert,#prev"))e.preventDefault()});
 document.addEventListener("dragstart",e=>{if(e.target.tagName==="IMG")e.preventDefault()});
 document.addEventListener("submit",async e=>{
@@ -617,6 +630,8 @@ document.addEventListener("submit",async e=>{
  if(CFG[m]){if(f.dataset.busy)return;f.dataset.busy=1;setTimeout(()=>{delete f.dataset.busy},2500)}
  if(m==="residents"){o.full_name=(o.full_name||"").trim().replace(/\s+/g," ");let q=sb.from("residents").select("id").ilike("full_name",o.full_name.replace(/[%_]/g,"")).limit(1);q=o.birthdate?q.eq("birthdate",o.birthdate):q.is("birthdate",null);const d=await q;
   if(d.data&&d.data.length){delete f.dataset.busy;return say("“"+o.full_name+"”"+(o.birthdate?" (born "+o.birthdate+")":"")+" is already in the registry. Search for the name and use Edit instead of adding again.")}}
+ if(m==="requests"&&o.type===FJ){const d=await sb.from("requests").select("ref_no,status").eq("resident_id",o.resident_id).eq("type",FJ).limit(1);
+  if(d.data&&d.data.length){delete f.dataset.busy;return say("This resident already has a First time jobseeker certification ("+d.data[0].ref_no+"). Under RA 11261 it can be issued only once.")}}
  if(m==="requests"){const d=await sb.from("requests").select("ref_no,status").eq("resident_id",o.resident_id).eq("type",o.type).neq("status","released").limit(1);
   if(d.data&&d.data.length){delete f.dataset.busy;return say("This resident already has an unfinished “"+o.type+"” request ("+d.data[0].ref_no+", "+d.data[0].status+"). Finish or delete that one first.")}}
  if(m==="edit"){if(ok(await sb.from(t).update(pre(t,o)).eq("id",id).select())){dlg.close();say("Changes saved.",1);draw()}return}
@@ -653,6 +668,7 @@ document.addEventListener("click",async e=>{
  if(b.dataset.qpage){QP=Math.max(0,QP+ +b.dataset.qpage);return draw()}
  if(b.dataset.hpage){HP=Math.max(0,HP+ +b.dataset.hpage);return draw()}
  if("qclear" in b.dataset){QQ="";QP=0;return draw()}
+ if(b.dataset.restore){b.disabled=true;const r=await sb.rpc("restore_deleted",{p_id:b.dataset.restore});if(r.error){b.disabled=false;return say(r.error.message)}say("Restored.",1);return draw()}
  if("aclear" in b.dataset){AQ="";AP=0;return draw()}
  if("arefresh" in b.dataset)return draw();
  if("aexcel" in b.dataset)return exportAudit();
