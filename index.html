@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light">
+<meta name="theme-color" content="#1F3A5F">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Brgy Talisay">
 <title>Barangay Talisay Records System</title>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
@@ -117,6 +124,9 @@ table.stack td[colspan]{text-align:left;justify-content:flex-start}
 table.stack td select{width:auto;min-width:150px}table.stack td .ic{margin:2px 0 2px 6px}table.stack td[data-label=""]{justify-content:flex-end;flex-wrap:wrap}
 }
 @media (min-width:641px){table.stack td:last-child{white-space:normal;min-width:130px}table.stack td:last-child .note{display:block;margin-bottom:4px}}
+#abar{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:40;width:min(580px,calc(100% - 24px));background:#1F3A5F;color:#fff;border-radius:14px;padding:12px 14px;box-shadow:0 14px 40px rgba(20,35,60,.4);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#abar b{flex:1 1 220px;font-weight:600}#abar .btn{box-shadow:none}#abar .btn.ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.55)}
+@media (prefers-reduced-motion:no-preference){#abar:not([hidden]){animation:ab .25s ease-out}@keyframes ab{from{opacity:0;transform:translate(-50%,-10px)}}}
 @page{size:8.5in 11in;margin:16mm}
 @media print{html,body{min-height:0!important;height:auto!important;padding:0!important}body::before{display:none}header,main,dialog{display:none!important}body{background:#fff}#cert{display:block!important}.cert{font-size:12pt;min-width:0}.cert .cf,.cert .sig,.cert .ch{break-inside:avoid}.cert.tight{line-height:1.5;padding:18px 30px}.cert.tight p{margin:7px 0}.cert.tight h2.ct{margin:12px 0}.cert.tight .sig{margin-top:34px}.cert.tight .cf{margin-top:16px}.cert.roomy{font-size:13pt;line-height:1.75;padding:28px 38px}.cert.roomy .ch{margin-bottom:6px}.cert.roomy h2.ct{margin:24px 0}.cert.roomy p{margin:14px 0}.cert.roomy .sig{margin-top:60px}.cert.roomy .sig.hs{margin-top:96px}.cert.roomy .cf{margin-top:26px;font-size:.8em}.cert.pg2{break-before:page;margin-top:16px}.cert.pg2 h2.ct{margin:16px 0}.cert.pg2 li{margin:5px 0}@media print{.cert.pg2{margin-top:0}}}
 </style>
@@ -128,6 +138,7 @@ table.stack td select{width:auto;min-width:150px}table.stack td .ic{margin:2px 0
 </header>
 <main><div id="msg" hidden></div><div id="view"></div></main>
 <dialog id="dlg"></dialog>
+<div id="abar" hidden role="alert" aria-live="assertive"></div>
 <div id="cert"></div>
 <script>
 const SB_URL="https://iloftktissjnikmyedfj.supabase.co";
@@ -385,7 +396,7 @@ async health(){
 
 function tabsFor(r){const t=r==="captain"?["dash","users","audit","records","households","finance","health"]:{secretary:["records","households"],treasurer:["finance"],bhw:["health","households"]}[r]||[];return BIN&&t.length?t.concat(["bin"]):t}
 async function draw(){
- $("who").innerHTML='<div class="me"><b>'+esc(me.full_name)+'</b>'+LABEL[me.role]+'</div><button class="btn ghost" id="out" style="margin-top:6px;float:right">Sign out</button>';
+ $("who").innerHTML='<div class="me"><b>'+esc(me.full_name)+'</b>'+LABEL[me.role]+'</div><div class="acts" style="margin-top:6px;justify-content:flex-end;flex-wrap:wrap">'+(["captain","secretary"].includes(me.role)?'<button class="btn ghost" data-alerts>'+(ALON?"🔔":"🔕")+' Alerts</button>':"")+'<button class="btn ghost" id="out">Sign out</button></div>';
  const nl=$("nav").scrollLeft;
  $("nav").innerHTML=tabsFor(me.role).map(t=>'<button role="tab" data-t="'+t+'" aria-selected="'+(t===tab)+'">'+MODS[t]+(t==="dash"&&PEND?'<span class="bdg">'+PEND+'</span>':'')+'</button>').join('');$("nav").scrollLeft=nl;
  const same=SH===tab,y=window.scrollY,fk=document.activeElement?.closest?.("form[data-f]")?.dataset.f;
@@ -399,11 +410,49 @@ function loginScreen(){
  $("who").innerHTML="";$("nav").innerHTML="";me=null;SH=null;SIG=null;stopRealtime();
  $("view").innerHTML='<div class="panel login"><img class="lgo" src="'+LOGO+'" alt="" width="84" height="84"><h2>Staff sign-in</h2><p class="note">Use the account the Punong Barangay created for you.</p><form class="frm" data-f="login"><label>Email<input name="email" type="email" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button class="btn">Sign in</button></form></div>';
 }
+// ===== Alerts: 5-second sound, banner and phone/desktop notification =====
+const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:v}catch(e){return d}},lsSet=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+let AC=null,AN=null,ABT=null,ABGO=null,INST=null,ALON=lsGet("alerts","on")!=="off",ALVOL=+lsGet("alertvol","0.7")||0.7;
+function unlockAudio(){try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==="suspended")AC.resume()}catch(e){}}
+["pointerdown","keydown","touchend"].forEach(ev=>document.addEventListener(ev,unlockAudio,{passive:true}));
+// five two-note chimes, one every second = exactly 5 seconds
+function chimes(ctx,dest,t0){for(let i=0;i<5;i++)[[880,0],[1318.51,.2]].forEach(([f,d])=>{const t=t0+i+d,o=ctx.createOscillator(),g=ctx.createGain();o.type="sine";o.frequency.value=f;o.connect(g);g.connect(dest);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.9,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+.75);o.start(t);o.stop(t+.8)})}
+function stopAlert(){if(!AN)return;const n=AN;AN=null;clearTimeout(n.t);try{n.g.gain.cancelScheduledValues(AC.currentTime);n.g.gain.setTargetAtTime(.0001,AC.currentTime,.03);setTimeout(()=>{try{n.g.disconnect()}catch(e){}},300)}catch(e){}const x=document.querySelector("[data-asilence]");if(x)x.remove()}
+function playAlert(){unlockAudio();if(!AC||AC.state!=="running")return false;stopAlert();const g=AC.createGain();g.gain.value=ALVOL;g.connect(AC.destination);chimes(AC,g,AC.currentTime+.05);const n={g,t:setTimeout(()=>{if(AN===n){AN=null;try{g.disconnect()}catch(e){}const x=document.querySelector("[data-asilence]");if(x)x.remove()}},5300)};AN=n;return true}
+async function ensureAudio(){unlockAudio();if(AC&&AC.state!=="running"){try{await AC.resume()}catch(e){}}return !!AC&&AC.state==="running"}
+function showBar(txt,setup){const b=$("abar");b.innerHTML='<b>'+esc(txt)+'</b>'+(AN?'<button class="btn ghost" data-asilence>Stop sound</button>':'')+(setup?'<button class="btn" data-alerts>Set up alerts</button>':'<button class="btn" data-aview>View</button>')+'<button class="btn ghost" data-aclose aria-label="Dismiss">✕</button>';b.hidden=false;clearTimeout(ABT);ABT=setTimeout(()=>{b.hidden=true},60000)}
+function hideBar(){stopAlert();$("abar").hidden=true;clearTimeout(ABT)}
+function goAlert(){hideBar();if(!me)return;tab=ABGO&&tabsFor(me.role).includes(ABGO)?ABGO:tabsFor(me.role)[0];draw()}
+async function osNotify(title,body,tag,quiet){
+ if(!("Notification" in window)||Notification.permission!=="granted")return;
+ try{const reg=await navigator.serviceWorker.ready;await reg.showNotification(title,{body:body||"",icon:"icon-192.png",badge:"icon-192.png",tag:tag||"talisay",renotify:true,silent:!!quiet,vibrate:[300,100,300,100,300],requireInteraction:true})}
+ catch(e){try{new Notification(title,{body:body||"",icon:"icon-192.png",tag:tag||"talisay",silent:!!quiet})}catch(_){}}}
+function alertUser(title,body,tag,go){
+ ABGO=go;const played=ALON&&playAlert();
+ if(ALON){try{navigator.vibrate&&navigator.vibrate([300,100,300,100,300])}catch(e){}}
+ showBar(title+(body?" · "+body:"")+(ALON&&!played?" (tap the page once to turn the sound on)":""));
+ if(ALON&&(document.hidden||!document.hasFocus()))osNotify(title,body,tag,played)}
+async function reqAlert(title,go,n){let lab=n.type||"";try{const nm=await namesFor([n.resident_id]);if(nm[n.resident_id])lab+=" · "+nm[n.resident_id]}catch(e){}alertUser(title,lab+" ("+n.ref_no+")","req-"+n.id,go)}
+function alertHint(){if(!me||!["captain","secretary"].includes(me.role)||lsGet("alhint","")==="1")return;if("Notification" in window&&Notification.permission==="default"){lsSet("alhint","1");showBar("Turn on alerts to hear a 5-second sound when a request needs you.",true)}}
+function openAlerts(){
+ const perm="Notification" in window?Notification.permission:"unsupported",ptxt={granted:"Allowed on this device",denied:"Blocked. Allow it in the browser’s site settings.","default":"Not asked yet",unsupported:"Not supported by this browser"}[perm];
+ dlg.className="";
+ dlg.innerHTML='<h2>Alerts</h2><p class="note">When a request needs you, the app plays a 5-second sound and shows a message. This works while the app is open, even in another tab or minimized.</p>'+
+ '<div class="vrow"><span>Sound alerts</span><label style="display:flex;align-items:center;gap:8px;font-size:1rem;color:var(--ink)"><input type="checkbox" id="alon"'+(ALON?" checked":"")+'> On</label></div>'+
+ '<div class="vrow"><span>Volume</span><select id="alvol" style="width:auto">'+opts([["0.3","Low"],["0.7","Medium"],["1","High"]],String(ALVOL))+'</select></div>'+
+ '<div class="vrow"><span>Notifications</span><b>'+esc(ptxt)+'</b></div>'+
+ '<div class="acts" style="margin-top:12px;flex-wrap:wrap"><button class="btn" data-altest>Play or stop test sound</button>'+(perm==="default"?'<button class="btn ghost" data-alperm>Allow notifications</button>':'')+(INST?'<button class="btn ghost" data-alinstall>Install as an app</button>':'')+'<button type="button" class="btn ghost" data-close>Close</button></div>'+
+ '<p class="note" style="margin-top:12px">To install: Chrome or Edge menu → “Install app”. iPhone: Share → “Add to Home Screen”. Alerts need the app to stay open (minimized is fine). Closing it completely stops them.</p>';
+ dlg.showModal()}
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();INST=e});
 let RT=null,RTOK=false,rtT=null;
 function busyNow(){const f=document.activeElement&&document.activeElement.closest?document.activeElement.closest("form[data-f]"):null;return dlg.open||(f&&!/search$/.test(f.dataset.f))}
 async function updateTitle(){let n=0;if(me&&me.role==="captain"){const r=await sb.from("requests").select("id",{count:"exact",head:true}).eq("status","verified");n=r.count||0}PEND=n;const nb=document.querySelector("nav button[data-t=dash]");if(nb)nb.innerHTML=MODS.dash+(n?'<span class="bdg">'+n+'</span>':"");document.title=(n?"("+n+") ":"")+"Barangay Talisay Records System"}
 function liveRefresh(){clearTimeout(rtT);rtT=setTimeout(function go(){if(!me)return;if(busyNow()){rtT=setTimeout(go,4000);return}if(["dash","records"].includes(tab))draw();updateTitle()},800)}
-function startRealtime(){if(RT||!me)return;RT=sb.channel("requests-live").on("postgres_changes",{event:"*",schema:"public",table:"requests"},p=>{if(me&&p.eventType!=="DELETE"&&p.new){const was=p.old&&p.old.status;if(me.role==="captain"&&p.new.status==="verified"&&was!=="verified")say("A request is waiting for your approval.",1);if(me.role==="secretary"&&p.new.status==="approved"&&was!=="approved")say("A request was approved. You can print it now.",1);if(me.role==="secretary"&&p.new.status==="received"&&was==="verified")say("The Captain returned a request for correction.",1)}liveRefresh()}).subscribe(st=>{RTOK=st==="SUBSCRIBED"})}
+function startRealtime(){if(RT||!me)return;RT=sb.channel("requests-live").on("postgres_changes",{event:"*",schema:"public",table:"requests"},p=>{if(me&&p.eventType!=="DELETE"&&p.new){const was=p.old&&p.old.status,n=p.new;
+  if(me.role==="captain"&&n.status==="verified"&&was!=="verified")reqAlert("A request is waiting for your approval","dash",n);
+  if(me.role==="secretary"&&n.status==="approved"&&was!=="approved")reqAlert("A request was approved. You can print it now","records",n);
+  if(me.role==="secretary"&&n.status==="received"&&was==="verified")reqAlert("The Captain returned a request for correction","records",n)}liveRefresh()}).subscribe(st=>{RTOK=st==="SUBSCRIBED"})}
 function stopRealtime(){if(RT){sb.removeChannel(RT);RT=null}RTOK=false;document.title="Barangay Talisay Records System"}
 setInterval(()=>{if(me&&!RTOK)liveRefresh()},60000);
 const dsay=t=>{const m=$("dmsg");if(m)m.textContent=t||"";else say(t)};
@@ -500,7 +549,7 @@ async function boot(){
  const {data:p}=await sb.from("profiles").select("*").eq("id",session.user.id).single();
  if(!p||!p.is_active||!p.role){
   $("view").innerHTML='<div class="panel login"><h2>Waiting for approval</h2><p>Your account is not active yet. Ask the Punong Barangay to give you a role.</p><button class="btn" id="out">Sign out</button></div>';return}
- me=p;SH=null;BIN=!(await sb.from("deleted_records").select("id",{count:"exact",head:true})).error;tab=tabsFor(p.role)[0];draw();startRealtime();updateTitle();
+ me=p;SH=null;BIN=!(await sb.from("deleted_records").select("id",{count:"exact",head:true})).error;tab=tabsFor(p.role)[0];draw();startRealtime();updateTitle();setTimeout(alertHint,1500);
 }
 function range(){const [y,m]=MONTH.split("-").map(Number),n=new Date(y,m,1);return[MONTH+"-01",n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0")+"-01"]}
 async function report(){
@@ -668,6 +717,13 @@ document.addEventListener("click",async e=>{
  const b=e.target.closest("button");if(!b)return;
  if("report" in b.dataset)return report();
  if(b.dataset.review)return openReview(b.dataset.review);
+ if("alerts" in b.dataset){hideBar();return openAlerts()}
+ if("aview" in b.dataset)return goAlert();
+ if("aclose" in b.dataset)return hideBar();
+ if("asilence" in b.dataset)return stopAlert();
+ if("altest" in b.dataset){if(AN)return stopAlert();if(await ensureAudio())playAlert();else say("The browser is blocking sound. Tap anywhere on the page once, then try again.");return}
+ if("alperm" in b.dataset){try{await Notification.requestPermission()}catch(e){}return openAlerts()}
+ if("alinstall" in b.dataset){if(INST){INST.prompt();INST=null}return dlg.close()}
  if("apall" in b.dataset){const ids=[...SEL];if(!ids.length)return;dlg.className="";dlg.innerHTML='<h2>Approve '+ids.length+' certificate'+(ids.length>1?"s":"")+'?</h2><p class="note">Your signature will print on these certificates.</p><ul>'+ids.map(i=>'<li>'+esc((APR[i]?APR[i].ref_no+" · "+(APR[i].residents?.full_name||"")+" · "+APR[i].type:i))+'</li>').join("")+'</ul><div class="acts"><button class="btn" data-doapall>Yes, approve</button><button type="button" class="btn ghost" data-close>Cancel</button></div>';dlg.showModal();return}
  if("doapall" in b.dataset){b.disabled=true;const ids=[...SEL],r=await sb.from("requests").update({status:"approved"}).in("id",ids).eq("status","verified").select();if(r.error){b.disabled=false;return say(r.error.message)}const n=(r.data||[]).length;dlg.close();SEL.clear();say("Approved "+n+" certificate"+(n===1?"":"s")+".",1);logEv({p_action:"APPROVE",p_detail:n+" certificates approved together"});draw();updateTitle();return}
  if("tpl" in b.dataset)return tpl();
@@ -719,6 +775,8 @@ document.addEventListener("click",async e=>{
   if(ok(await sb.from("profiles").update({role,is_active:a}).eq("id",id).select())){logEv({p_action:"ROLE_CHANGE",p_detail:"Account "+id+" set to "+(role||"none")+(a?", active":", inactive")});say("Account saved.",1);draw()}}
 });
 document.addEventListener("change",e=>{
+ if(e.target.id==="alon"){ALON=e.target.checked;lsSet("alerts",ALON?"on":"off");if(!ALON)stopAlert();draw();return}
+ if(e.target.id==="alvol"){ALVOL=+e.target.value||0.7;lsSet("alertvol",String(ALVOL));return}
  if(e.target.matches&&e.target.matches("[data-sel],[data-selall]")){const t=e.target;
   if("selall" in t.dataset)document.querySelectorAll("[data-sel]").forEach(c=>{c.checked=t.checked;t.checked?SEL.add(c.dataset.sel):SEL.delete(c.dataset.sel)});else t.checked?SEL.add(t.dataset.sel):SEL.delete(t.dataset.sel);
   const n=SEL.size,bt=document.querySelector("[data-apall]"),sa=document.querySelector("[data-selall]");if(bt){bt.disabled=!n;bt.textContent="Approve selected ("+n+")"}if(sa)sa.checked=n>0&&n===document.querySelectorAll("[data-sel]").length;return}
@@ -739,6 +797,7 @@ document.addEventListener("change",e=>{
  if(e.target.id==="xl"&&e.target.files[0]){parseImport(e.target.files[0]);e.target.value=""}});
 dlg.addEventListener("click",e=>{if(e.target===dlg)dlg.close()});
 $("msg").addEventListener("click",()=>say(""));
+if("serviceWorker" in navigator&&/^https?:$/.test(location.protocol)){navigator.serviceWorker.register("sw.js").catch(()=>{});navigator.serviceWorker.addEventListener("message",e=>{if(e.data&&e.data.type==="alert-open")goAlert()})}
 sb.auth.onAuthStateChange(ev=>{if(ev==="SIGNED_OUT")loginScreen()});
 boot();
 </script>
