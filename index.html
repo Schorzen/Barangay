@@ -72,7 +72,7 @@ dialog{max-height:92vh;overflow:auto}
 .bar em{font-style:normal;text-align:right;color:var(--mute)}
 .cert .cf{overflow:hidden}.cert .qr{float:left;margin:0 14px 0 0;width:84px;height:84px;image-rendering:pixelated}
 .sf{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}.sf input{max-width:300px}
-.pkres{display:grid;gap:4px}.pkopt{text-align:left;font:inherit;font-weight:400;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);cursor:pointer}.pkopt:hover{background:#EAF1FB}
+.pk{position:relative}.pkres{display:grid;gap:2px;position:absolute;left:0;right:0;top:100%;margin-top:4px;z-index:15;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 34px rgba(20,35,60,.24);padding:4px;max-height:280px;overflow:auto}.pkres:empty{display:none}.pkres .note{padding:8px 10px}.pkopt{text-align:left;font:inherit;font-weight:400;padding:9px 10px;border:0;border-radius:8px;background:#fff;color:var(--ink);cursor:pointer;display:grid;gap:1px}.pkopt small{color:var(--mute);font-size:.8rem}.pkopt:hover,.pkopt:focus-visible{background:#EAF1FB}
 .cert{position:relative;overflow:hidden}
 .cert .wm{position:absolute;top:50%;left:50%;width:80%;transform:translate(-50%,-50%);opacity:.12;z-index:0;pointer-events:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .cert>*:not(.wm){position:relative;z-index:1}
@@ -165,7 +165,7 @@ const when=t=>t?new Date(t).toLocaleString([], {month:"short",day:"numeric",hour
 const peso=n=>"₱"+Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
 const chip=s=>({h:'<span class="chip '+esc(s)+'">'+esc(s)+'</span>'});
 const opts=(a,v)=>(v&&!a.some(o=>o[0]==v)?a.concat([[v,v]]):a).map(o=>'<option value="'+esc(o[0])+'"'+(o[0]==v?' selected':'')+'>'+esc(o[1])+'</option>').join('');
-const fld=(f,v)=>f[2]==="person"?'<label>'+f[1]+'<input data-pk placeholder="Type at least 2 letters of the name…" autocomplete="off"><input type="hidden" name="'+f[0]+'"><div class="pkres"></div></label>':'<label>'+f[1]+(f[2]==="select"?'<select name="'+f[0]+'"'+(f[4]==="opt"?'':' required')+'>'+opts(f[3],v)+'</select>':'<input name="'+f[0]+'" type="'+f[2]+'"'+(f[2]==="number"?' step="0.01" min="0"':'')+(f[3]==="opt"?'':' required')+' value="'+esc(v??"")+'">')+'</label>';
+const fld=(f,v)=>f[2]==="person"?'<label class="pk">'+f[1]+'<input data-pk placeholder="Type at least 2 letters of the name…" autocomplete="off"><input type="hidden" name="'+f[0]+'"><div class="pkres"></div></label>':'<label>'+f[1]+(f[2]==="select"?'<select name="'+f[0]+'"'+(f[4]==="opt"?'':' required')+'>'+opts(f[3],v)+'</select>':'<input name="'+f[0]+'" type="'+f[2]+'"'+(f[2]==="number"?' step="0.01" min="0"':'')+(f[3]==="opt"?'':' required')+' value="'+esc(v??"")+'">')+'</label>';
 const form=(name,fields,btn)=>'<form class="frm" data-f="'+name+'">'+fields.map(f=>fld(f)).join('')+'<button class="btn">'+btn+'</button></form>';
 const keep=(t,a)=>{ROWS[t]=Object.fromEntries((a||[]).map(x=>[x.id,x]))};
 const act=(t,id,w)=>w?'<button class="ic" data-edit="'+t+'|'+id+'">Edit</button><button class="ic del" data-del="'+t+'|'+id+'">Delete</button>':"";
@@ -498,8 +498,12 @@ async function parseImport(file){
   IMP.push({full_name:name,birthdate:/^\d{4}-\d{2}-\d{2}$/.test(o.birthdate||"")?o.birthdate:null,sex:sx==="M"||sx==="F"?sx:null,purok_id:pid,association:ASL.find(a=>a.toLowerCase()===String(o.association||"").trim().toLowerCase())||null,civil_status:CSL.find(c=>c.toLowerCase()===String(o.civil_status||o.status||"").trim().toLowerCase())||null,sector:o.sector||null,is_pwd:yn(o.pwd),is_solo_parent:yn(o.solo_parent),is_4ps:yn(o["4ps"])})});
  dlg.className="";dlg.innerHTML='<h2>Import residents</h2><p>'+IMP.length+' rows are ready to import. '+bad.length+' have problems and will be skipped.</p>'+(bad.length?'<p class="note">'+esc(bad.slice(0,8).join("; "))+(bad.length>8?"…":"")+'</p>':"")+'<div class="acts">'+(IMP.length?'<button class="btn" data-doimp>Import '+IMP.length+'</button>':"")+'<button class="btn ghost" data-close>Cancel</button></div>';dlg.showModal()}
 async function doImport(){
- for(let i=0;i<IMP.length;i+=200){const r=await sb.from("residents").insert(IMP.slice(i,i+200));if(r.error){dlg.close();return say(r.error.message)}}
- const n=IMP.length;IMP=[];dlg.close();say("Imported "+n+" residents.",1);draw()}
+ say("Checking for people already in the registry…");
+ const have=await allRows(()=>sb.from("residents").select("full_name,birthdate").order("id"));if(!have)return dlg.close();
+ const k=x=>String(x.full_name||"").trim().toLowerCase().replace(/\s+/g," ")+"|"+(x.birthdate||""),seen=new Set(have.map(k)),add=[];let skip=0;
+ IMP.forEach(x=>{const y=k(x);if(seen.has(y))skip++;else{seen.add(y);add.push(x)}});
+ for(let i=0;i<add.length;i+=200){const r=await sb.from("residents").insert(add.slice(i,i+200));if(r.error){dlg.close();return say(r.error.message)}}
+ IMP=[];dlg.close();say("Imported "+add.length+" new resident"+(add.length===1?"":"s")+(skip?". Skipped "+skip+" already in the registry (same name and birthdate).":"."),1);draw()}
 function qr(r,d){if(typeof qrcode==="undefined")return"";try{const q=qrcode(0,"M");q.addData(r.verify_token?location.origin+location.pathname+"#verify="+r.verify_token:"BARANGAY TALISAY, SANTA FE, CEBU | "+r.ref_no+" | "+r.type);q.make();return'<img class="qr" alt="QR code" src="'+q.createDataURL(4,0)+'">'}catch(e){return""}}
 let SIG=null,SIGERR="";
 async function getSig(){if(SIG!==null)return SIG;try{const r=await sb.storage.from("signatures").download("captain-signature.png");if(r.error)throw r.error;SIG=await new Promise((res,rej)=>{const f=new FileReader();f.onload=()=>res(f.result);f.onerror=rej;f.readAsDataURL(r.data)})}catch(e){SIG=null;let why="unknown reason";
@@ -610,6 +614,11 @@ document.addEventListener("submit",async e=>{
   if(r.error)return dsay(r.error.message);dlg.close();say("Health survey saved.",1);return draw()}
  if(f.querySelector('[name="resident_id"]')&&!o.resident_id)return say("Please search and choose a resident from the list.");
  const [m,t,id]=n.split("|");
+ if(CFG[m]){if(f.dataset.busy)return;f.dataset.busy=1;setTimeout(()=>{delete f.dataset.busy},2500)}
+ if(m==="residents"){o.full_name=(o.full_name||"").trim().replace(/\s+/g," ");let q=sb.from("residents").select("id").ilike("full_name",o.full_name.replace(/[%_]/g,"")).limit(1);q=o.birthdate?q.eq("birthdate",o.birthdate):q.is("birthdate",null);const d=await q;
+  if(d.data&&d.data.length){delete f.dataset.busy;return say("“"+o.full_name+"”"+(o.birthdate?" (born "+o.birthdate+")":"")+" is already in the registry. Search for the name and use Edit instead of adding again.")}}
+ if(m==="requests"){const d=await sb.from("requests").select("ref_no,status").eq("resident_id",o.resident_id).eq("type",o.type).neq("status","released").limit(1);
+  if(d.data&&d.data.length){delete f.dataset.busy;return say("This resident already has an unfinished “"+o.type+"” request ("+d.data[0].ref_no+", "+d.data[0].status+"). Finish or delete that one first.")}}
  if(m==="edit"){if(ok(await sb.from(t).update(pre(t,o)).eq("id",id).select())){dlg.close();say("Changes saved.",1);draw()}return}
  if(m==="del"){if(ok(await sb.from(t).delete().eq("id",id).select())){dlg.close();say("Deleted.",1);draw()}else dlg.close();return}
  if(m==="requests")o.ref_no="REQ-"+new Date().toISOString().slice(2,7).replace("-","")+"-"+Math.floor(100+Math.random()*900);
@@ -619,10 +628,11 @@ let pkT;
 document.addEventListener("input",e=>{
  if(e.target.dataset.pk!==undefined){clearTimeout(pkT);const el=e.target,q=el.value.trim();el.nextElementSibling.value="";
   pkT=setTimeout(async()=>{const box=el.parentElement.querySelector(".pkres");if(q.length<2){box.innerHTML="";return}
-   const r=await sb.from("residents_basic").select("id,full_name,birthdate").ilike("full_name",lk(q)).order("full_name").limit(8);
-   box.innerHTML=(r.data||[]).map(x=>'<button type="button" class="pkopt" data-pick="'+x.id+'" data-name="'+esc(x.full_name)+'">'+esc(x.full_name)+(x.birthdate?" · "+esc(x.birthdate):"")+'</button>').join("")||'<span class="note">No match. Check the spelling, or add the resident first.</span>'},250);return}
+   const r=await sb.from("residents_basic").select("id,full_name,birthdate,purok_id").ilike("full_name",lk(q)).order("full_name").limit(8);const PN=Object.fromEntries(PU);
+   box.innerHTML=(r.data||[]).map(x=>'<button type="button" class="pkopt" data-pick="'+x.id+'" data-name="'+esc(x.full_name)+'">'+esc(x.full_name)+'<small>'+[x.birthdate?"Born "+esc(x.birthdate):"No birthdate",PN[x.purok_id]?esc(PN[x.purok_id]):""].filter(Boolean).join(" · ")+'</small></button>').join("")||'<span class="note">No match. Check the spelling, or add the resident first.</span>'},250);return}
  if(["sdoc","sd","st","sv","sx","sg"].includes(e.target.id)){refreshDoc(e.target.dataset.rid);return}if(e.target.id==="pur"||e.target.id==="ext"){const r=ROWS.requests[e.target.dataset.rid];r._ext=$("ext")?$("ext").value:"";$("prev").innerHTML=certHTML(r,$("pur")?$("pur").value:"",true);return}const k=e.target.dataset.filter;if(!k)return;const q=e.target.value.toLowerCase();document.querySelectorAll("#"+k+" tr").forEach(r=>{r.hidden=!r.textContent.toLowerCase().includes(q)})});
 document.addEventListener("click",async e=>{
+ document.querySelectorAll(".pkres").forEach(x=>{if(!x.parentElement.contains(e.target))x.innerHTML=""});
  const b=e.target.closest("button");if(!b)return;
  if("report" in b.dataset)return report();
  if("tpl" in b.dataset)return tpl();
