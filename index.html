@@ -160,7 +160,7 @@ const CL="Certificate of common law",FJ="First time jobseeker certification",SP=
 const TYPES=opt(["Barangay clearance","Certificate of indigency","Certificate of residency","Business clearance",CL,FJ,SP]);
 const PROG=opt(["Immunization","Prenatal","Senior check-up","Nutrition","Family planning"]);
 const BST=[["open","Open"],["mediation","Mediation"],["settled","Settled"],["referred","Referred"]];
-let AQ="",AR="",AA="",APER="7",AP=0,BIN=false,PEND=0,SEL=new Set(),APR={};
+let AQ="",AR="",AA="",APER="7",AP=0,BIN=false,PEND=0,SEL=new Set(),APR={},CACHE={},VH="",DSEQ=0;
 let me=null,tab=null,PU=[],RES=[],ROWS={},SH=null,IMP=[],AGT="0-11m, 1-4, 5-9, 10-14, 15-19, 20-59, 60+",AGU="",AGD="",AGHTML="",AGR=null,HHQ="",HHP=0,HHF="",SR=false,PF="",SXF="",GF="",CF="",AF="",RQ="",RP=0,HQ="",HP=0,QQ="",QP=0,UNPAID=[["","— none —"]],MONTH=new Date().toISOString().slice(0,7);
 const CFG={
  residents:{n:"resident",f:()=>[["full_name","Full name","text"],["birthdate","Birthdate","date","opt"],["sex","Sex","select",[["M","Male"],["F","Female"]]],["civil_status","Civil status","select",[["","Not stated"]].concat(opt(CSL)),"opt"],["association","Association (optional)","select",[["","None"]].concat(opt(ASL)),"opt"],["purok_id","Purok","select",PU],["sector","Sector (optional)","text","opt"],["is_pwd","PWD","select",[["false","No"],["true","Yes"]]],["is_solo_parent","Solo parent","select",[["false","No"],["true","Yes"]]],["is_4ps","4Ps beneficiary","select",[["false","No"],["true","Yes"]]]]},
@@ -183,7 +183,7 @@ const form=(name,fields,btn)=>'<form class="frm" data-f="'+name+'">'+fields.map(
 const keep=(t,a)=>{ROWS[t]=Object.fromEntries((a||[]).map(x=>[x.id,x]))};
 const act=(t,id,w)=>w?'<button class="ic" data-edit="'+t+'|'+id+'">Edit</button><button class="ic del" data-del="'+t+'|'+id+'">Delete</button>':"";
 const addForm=(t,w,btn)=>w?form(t,(CFG[t].x?CFG[t].x():[]).concat(CFG[t].f(false)),btn):"";
-function say(t,good){const m=$("msg");m.textContent=t||"";m.className=good?"good":"";m.hidden=!t;if(good)setTimeout(()=>{if(m.textContent===t)m.hidden=true},2500)}
+function say(t,good){if(good)CACHE={};const m=$("msg");m.textContent=t||"";m.className=good?"good":"";m.hidden=!t;if(good)setTimeout(()=>{if(m.textContent===t)m.hidden=true},2500)}
 const ok=r=>{if(r.error){say(r.error.code==="23503"?"This record is linked to other files (for example requests or health records), so it can’t be deleted yet. Remove those first.":r.error.message);return false}if(r.data&&!r.data.length){say("Not allowed, or the record no longer exists.");return false}say("");return true};
 function pre(t,o){const x={...o};["birthdate","sector","status","notes","request_ref","details","civil_status","association","head_resident_id","household_no","housing_material","electricity","ownership","respondent_address","hearing_date","hearing_time"].forEach(k=>{if(k in x&&x[k]==="")x[k]=null});if("amount" in x)x.amount=+x.amount;["is_pwd","is_solo_parent","is_4ps"].forEach(k=>{if(k in x)x[k]=x[k]==="true"});return x}
 
@@ -305,9 +305,10 @@ async function exportAudit(){
 const V={
 async dash(){
  const [ms,ne]=range();
- const [rs,q,p,e,h,bl,ap,sn,rc]=await Promise.all([sb.from("residents").select("id",{count:"exact",head:true}),sb.from("requests").select("status").gte("requested_at",ms).lt("requested_at",ne),sb.from("payments").select("amount").gte("paid_at",ms).lt("paid_at",ne),sb.from("expenses").select("amount").gte("spent_at",ms).lt("spent_at",ne),sb.from("health_records").select("id").gte("visit_date",ms).lt("visit_date",ne),sb.from("blotter").select("case_no,complainant_name,respondent_name,hearing_date,hearing_time,status").gte("hearing_date",todayStr()).limit(100),sb.from("requests").select("id,ref_no,type,status,requested_at,resident_id,details,residents(full_name,birthdate,sex,civil_status,puroks(name))").eq("status","verified").order("requested_at").limit(20),sb.from("residents").select("id",{count:"exact",head:true}).lte("birthdate",seniorCut()),sb.from("requests").select("id,ref_no,type,approved_at,residents(full_name)").eq("status","approved").order("approved_at",{ascending:false}).limit(5)]);
+ const [rs,q,p,e,h,bl,ap,sn,rc,ps]=await Promise.all([sb.from("residents").select("id",{count:"exact",head:true}),sb.from("requests").select("status").gte("requested_at",ms).lt("requested_at",ne),sb.from("payments").select("amount").gte("paid_at",ms).lt("paid_at",ne),sb.from("expenses").select("amount").gte("spent_at",ms).lt("spent_at",ne),sb.from("health_records").select("id").gte("visit_date",ms).lt("visit_date",ne),sb.from("blotter").select("case_no,complainant_name,respondent_name,hearing_date,hearing_time,status").gte("hearing_date",todayStr()).limit(100),sb.from("requests").select("id,ref_no,type,status,requested_at,resident_id,details,residents(full_name,birthdate,sex,civil_status,puroks(name))").eq("status","verified").order("requested_at").limit(20),sb.from("residents").select("id",{count:"exact",head:true}).lte("birthdate",seniorCut()),sb.from("requests").select("id,ref_no,type,approved_at,residents(full_name)").eq("status","approved").order("approved_at",{ascending:false}).limit(5),sb.rpc("population_summary")]);
  const sum=a=>(a.data||[]).reduce((t,x)=>t+ +x.amount,0),tp=sum(p),te=sum(e),by={},st={};
- const pk=await sb.from("puroks").select("id,name").order("name"),pc=await Promise.all((pk.data||[]).map(x=>sb.from("residents").select("id",{count:"exact",head:true}).eq("purok_id",x.id)));(pk.data||[]).forEach((x,i)=>{by[x.name]=pc[i].count||0});
+ if(!ps.error&&ps.data)ps.data.forEach(x=>{by[x.purok]=+x.total||0});
+ else{const pk=await sb.from("puroks").select("id,name").order("name"),pc=await Promise.all((pk.data||[]).map(x=>sb.from("residents").select("id",{count:"exact",head:true}).eq("purok_id",x.id)));(pk.data||[]).forEach((x,i)=>{by[x.name]=pc[i].count||0})}
  (q.data||[]).forEach(x=>{st[x.status]=(st[x.status]||0)+1});
  const mx=Math.max(1,...Object.values(by));
  return '<div class="panel"><h2>Monthly overview</h2><div class="acts" style="flex-wrap:wrap;align-items:end"><label>Month<input type="month" id="mo" value="'+MONTH+'"></label><button class="btn" data-report>Download Excel report</button></div></div>'+
@@ -349,8 +350,8 @@ async records(){
  ''+upHTML(upcoming(b.data))+'<div class="panel"><h2>Blotter</h2>'+addForm("blotter",w,"Add case")+tbl(["Case","Complainant","Respondent","Incident","Hearing","Status",""],(b.data||[]).map(x=>[x.case_no,x.complainant_name,x.respondent_name,x.incident,x.hearing_date?x.hearing_date+(x.hearing_time?" "+x.hearing_time:""):"",x.status,{h:((w||me.role==="captain")?'<button class="ic" data-summ="'+x.id+'">Documents</button>':"")+act("blotter",x.id,w)}]))+'</div>'},
 async finance(){
  const w=me.role==="treasurer";
- const un=await sb.rpc("unpaid_requests");UNPAID=[["","— none —"]].concat((un.data||[]).map(x=>[x.ref_no,x.ref_no+" · "+x.resident+" · "+x.type]));
- const [p,e]=await Promise.all([sb.from("payments").select("*").order("paid_at",{ascending:false}).limit(80),sb.from("expenses").select("*").order("spent_at",{ascending:false}).limit(80)]);
+ const [un,p,e]=await Promise.all([sb.rpc("unpaid_requests"),sb.from("payments").select("*").order("paid_at",{ascending:false}).limit(80),sb.from("expenses").select("*").order("spent_at",{ascending:false}).limit(80)]);
+ UNPAID=[["","— none —"]].concat((un.data||[]).map(x=>[x.ref_no,x.ref_no+" · "+x.resident+" · "+x.type]));
  keep("payments",p.data);keep("expenses",e.data);
  const tp=(p.data||[]).reduce((s,x)=>s+ +x.amount,0),te=(e.data||[]).reduce((s,x)=>s+ +x.amount,0);
  return '<div class="grid"><div class="stat"><b>'+peso(tp)+'</b><span>Collected (shown)</span></div><div class="stat"><b>'+peso(te)+'</b><span>Spent (shown)</span></div><div class="stat"><b>'+peso(tp-te)+'</b><span>Balance</span></div></div>'+
@@ -358,21 +359,18 @@ async finance(){
  '<div class="panel"><h2>Expenses</h2>'+addForm("expenses",w,"Add expense")+tbl(["Date","Description","Amount",""],(e.data||[]).map(x=>[x.spent_at,x.description,peso(x.amount),{h:act("expenses",x.id,w)}]))+'</div>'},
 async households(){
  const w=me.role==="secretary"||me.role==="bhw",hv=me.role==="bhw"||me.role==="captain";
- const p=await sb.from("puroks").select("id,name").order("name");PU=(p.data||[]).map(x=>[x.id,x.name]);
+ const pP=Promise.resolve(sb.from("puroks").select("id,name").order("name")),cP=Promise.all([sb.from("households").select("id",{count:"exact",head:true}),sb.from("households").select("id",{count:"exact",head:true}).eq("is_4ps",true),sb.from("residents_basic").select("id",{count:"exact",head:true}).is("household_id",null)]);
  let q=sb.from("households").select("id,household_no,address,purok_id,is_4ps,housing_material,electricity,ownership,head_resident_id,puroks(name)",{count:"exact"}).order("household_no",{nullsFirst:false}).order("address");
  if(HHF)q=q.eq("purok_id",HHF);
  const t=HHQ.replace(/[%_,()*]/g,"").trim();
  if(t){const m=await sb.from("residents_basic").select("household_id").ilike("full_name",lk(t)).not("household_id","is",null).limit(200),ids=[...new Set((m.data||[]).map(x=>x.household_id))];
   q=q.or("household_no.ilike.*"+t+"*,address.ilike.*"+t+"*"+(ids.length?",id.in.("+ids.join(",")+")":""))}
- const h=await q.range(HHP*PS,HHP*PS+PS-1);
+ const [p,h]=await Promise.all([pP,q.range(HHP*PS,HHP*PS+PS-1)]);PU=(p.data||[]).map(x=>[x.id,x.name]);
  if(h.error)return say(h.error.message.includes("does not exist")?"The household system is not set up yet. Run barangay-talisay-households.sql in Supabase.":h.error.message),"";
  const rows=h.data||[];keep("households",rows);const ids=rows.map(x=>x.id);
- const [mem,hh,all,f4,lone]=await Promise.all([
+ const [[all,f4,lone],mem,hh]=await Promise.all([cP,
   ids.length?sb.from("residents_basic").select("id,household_id").in("household_id",ids):{data:[]},
-  hv&&ids.length?sb.from("household_health").select("household_id").in("household_id",ids):{data:[]},
-  sb.from("households").select("id",{count:"exact",head:true}),
-  sb.from("households").select("id",{count:"exact",head:true}).eq("is_4ps",true),
-  sb.from("residents_basic").select("id",{count:"exact",head:true}).is("household_id",null)]);
+  hv&&ids.length?sb.from("household_health").select("household_id").in("household_id",ids):{data:[]}]);
  const cnt={};(mem.data||[]).forEach(x=>{cnt[x.household_id]=(cnt[x.household_id]||0)+1});
  const done=new Set((hh.data||[]).map(x=>x.household_id)),nm=await namesFor(rows.map(x=>x.head_resident_id).filter(Boolean));
  const head=["No.","Head","Address","Purok","Members","4Ps"].concat(hv?["Health survey"]:[]).concat([""]);
@@ -382,11 +380,12 @@ async households(){
  '<div class="acts" style="margin-bottom:10px;flex-wrap:wrap"><select id="hhpf" aria-label="Purok" style="width:auto">'+opts([["","All puroks"]].concat(PU),HHF)+'</select><button class="btn ghost" data-hhexcel>Download households (Excel)</button></div>'+
  tbl(head,body)+pager(h.count||0,HHP,"hhpage")+'<p class="note">Search by household number, address or a member’s name. Open “Members” to add people to a household.'+(hv?" Health survey details are visible only to the BHW and the Punong Barangay.":"")+'</p></div>'},
 async health(){
- const ppx=await sb.from("puroks").select("id,name").order("name");PU=(ppx.data||[]).map(x=>[x.id,x.name]);
+ const ppP=Promise.resolve(sb.from("puroks").select("id,name").order("name"));
  const w=me.role==="bhw";let h;
  if(HQ){const m=await sb.from("residents_basic").select("id").ilike("full_name",lk(HQ)).limit(200),ids=(m.data||[]).map(x=>x.id);
   h=ids.length?await sb.from("health_records").select("*",{count:"exact"}).in("resident_id",ids).order("visit_date",{ascending:false}).range(HP*PS,HP*PS+PS-1):{data:[],count:0}}
  else h=await sb.from("health_records").select("*",{count:"exact"}).order("visit_date",{ascending:false}).range(HP*PS,HP*PS+PS-1);
+ {const ppx=await ppP;PU=(ppx.data||[]).map(x=>[x.id,x.name])}
  keep("health_records",h.data);
  const nm=await namesFor([...new Set((h.data||[]).map(x=>x.resident_id))]);
  return agPanel()+'<div class="panel"><h2>Health files</h2>'+addForm("health_records",w,"Add record")+searchForm("hsearch",HQ,"hclear")+tbl(["Name","Program","Visit","Status","Notes",""],(h.data||[]).map(x=>[nm[x.resident_id]||"",x.program,x.visit_date,x.status,x.notes,{h:act("health_records",x.id,w)}]))+pager(h.count||0,HP,"hpage")+'<p class="note">Medical details are visible only to the BHW and the Punong Barangay.</p></div>'}
@@ -397,15 +396,19 @@ async function draw(){
  $("who").innerHTML='<div class="me"><b>'+esc(me.full_name)+'</b>'+LABEL[me.role]+'</div><div class="acts" style="margin-top:6px;justify-content:flex-end;flex-wrap:wrap">'+(["captain","secretary"].includes(me.role)?'<button class="btn ghost" data-alerts>'+(ALON?"🔔":"🔕")+' Alerts</button>':"")+'<button class="btn ghost" id="out">Sign out</button></div>';
  const nl=$("nav").scrollLeft;
  $("nav").innerHTML=tabsFor(me.role).map(t=>'<button role="tab" data-t="'+t+'" aria-selected="'+(t===tab)+'">'+MODS[t]+(t==="dash"&&PEND?'<span class="bdg">'+PEND+'</span>':'')+'</button>').join('');$("nav").scrollLeft=nl;
- const same=SH===tab,y=window.scrollY,fk=document.activeElement?.closest?.("form[data-f]")?.dataset.f;
- document.body.style.cursor="progress";
- let html;try{html=await V[tab]()}finally{document.body.style.cursor=""}
- $("view").innerHTML=html;SH=tab;
- if(same)window.scrollTo(0,y);
+ const same=SH===tab,y=window.scrollY,fk=document.activeElement?.closest?.("form[data-f]")?.dataset.f,t=tab,seq=++DSEQ;
+ let showed=same;
+ if(!same){const c=CACHE[t];if(c&&Date.now()-c.at<6e5){$("view").innerHTML=c.html;VH=c.html;SH=t;showed=true;window.scrollTo(0,0)}}
+ if(!showed)document.body.style.cursor="progress";
+ let html;try{html=await V[t]()}finally{document.body.style.cursor=""}
+ if(seq!==DSEQ||t!==tab)return;
+ if(html)CACHE[t]={html,at:Date.now()};
+ if(!showed||html!==VH){const keep=same?y:window.scrollY;$("view").innerHTML=html;VH=html;if(same||showed)window.scrollTo(0,keep)}
+ SH=t;
  if(fk&&/search$/.test(fk)){const el=document.querySelector('form[data-f="'+fk+'"] input[name="q"]');if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length)}}
 }
 function loginScreen(){
- $("who").innerHTML="";$("nav").innerHTML="";me=null;SH=null;SIG=null;stopRealtime();
+ $("who").innerHTML="";$("nav").innerHTML="";me=null;SH=null;SIG=null;CACHE={};VH="";stopRealtime();
  $("view").innerHTML='<div class="panel login"><img class="lgo" src="'+LOGO+'" alt="" width="84" height="84"><h2>Staff sign-in</h2><p class="note">Use the account the Punong Barangay created for you.</p><form class="frm" data-f="login"><label>Email<input name="email" type="email" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button class="btn">Sign in</button></form></div>';
 }
 // ===== Alerts: 5-second sound, banner and phone/desktop notification =====
@@ -447,7 +450,7 @@ let RT=null,RTOK=false,rtT=null;
 function busyNow(){const f=document.activeElement&&document.activeElement.closest?document.activeElement.closest("form[data-f]"):null;return dlg.open||(f&&!/search$/.test(f.dataset.f))}
 async function updateTitle(){let n=0;if(me&&me.role==="captain"){const r=await sb.from("requests").select("id",{count:"exact",head:true}).eq("status","verified");n=r.count||0}PEND=n;const nb=document.querySelector("nav button[data-t=dash]");if(nb)nb.innerHTML=MODS.dash+(n?'<span class="bdg">'+n+'</span>':"");document.title=(n?"("+n+") ":"")+"Barangay Talisay Records System"}
 function liveRefresh(){clearTimeout(rtT);rtT=setTimeout(function go(){if(!me)return;if(busyNow()){rtT=setTimeout(go,4000);return}if(["dash","records"].includes(tab))draw();updateTitle()},800)}
-function startRealtime(){if(RT||!me)return;RT=sb.channel("requests-live").on("postgres_changes",{event:"*",schema:"public",table:"requests"},p=>{if(me&&p.eventType!=="DELETE"&&p.new){const was=p.old&&p.old.status,n=p.new;
+function startRealtime(){if(RT||!me)return;RT=sb.channel("requests-live").on("postgres_changes",{event:"*",schema:"public",table:"requests"},p=>{CACHE={};if(me&&p.eventType!=="DELETE"&&p.new){const was=p.old&&p.old.status,n=p.new;
   if(me.role==="captain"&&n.status==="verified"&&was!=="verified")reqAlert("A request is waiting for your approval","dash",n);
   if(me.role==="secretary"&&n.status==="approved"&&was!=="approved")reqAlert("A request was approved. You can print it now","records",n);
   if(me.role==="secretary"&&n.status==="received"&&was==="verified")reqAlert("The Captain returned a request for correction","records",n)}liveRefresh()}).subscribe(st=>{RTOK=st==="SUBSCRIBED"})}
@@ -547,7 +550,7 @@ async function boot(){
  const {data:p}=await sb.from("profiles").select("*").eq("id",session.user.id).single();
  if(!p||!p.is_active||!p.role){
   $("view").innerHTML='<div class="panel login"><h2>Waiting for approval</h2><p>Your account is not active yet. Ask the Punong Barangay to give you a role.</p><button class="btn" id="out">Sign out</button></div>';return}
- me=p;SH=null;BIN=!(await sb.from("deleted_records").select("id",{count:"exact",head:true})).error;tab=tabsFor(p.role)[0];draw();startRealtime();updateTitle();setTimeout(alertHint,1500);
+ me=p;SH=null;CACHE={};VH="";BIN=!(await sb.from("deleted_records").select("id",{count:"exact",head:true})).error;tab=tabsFor(p.role)[0];draw();startRealtime();updateTitle();setTimeout(alertHint,1500);
 }
 function range(){const [y,m]=MONTH.split("-").map(Number),n=new Date(y,m,1);return[MONTH+"-01",n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0")+"-01"]}
 async function report(){
