@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.brgytalisaysantafe.twa",
+        "sha256_cert_fingerprints": ["74:82:54:F6:21:9E:40:B3:48:FF:53:FB:D0:B1:3D:C1:1A:75:12:B1:ED:66:95:04:67:1E:9B:31:17:D9:1B:83"]
+      }
+    }]
