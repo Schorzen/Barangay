@@ -1,0 +1,35 @@
+# Keeps the Supabase Free plan database from pausing when nobody uses the
+# system for a while (holidays). Runs every 3 days and can also be run by hand
+# from the Actions tab ("Run workflow").
+# It only asks the public certificate-check function about a made-up QR code,
+# so it reads no resident data and changes nothing.
+name: Keep Supabase awake
+
+on:
+  schedule:
+    - cron: "17 1 */3 * *"   # every 3 days, 9:17 AM Philippine time
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping the database
+        env:
+          SB_URL: https://iloftktissjnikmyedfj.supabase.co
+          SB_KEY: sb_publishable_nyThP0h3QcRKGlRiqMinaQ_yNKI2Ej4   # publishable key (already public in index.html)
+        run: |
+          for i in 1 2 3; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$SB_URL/rest/v1/rpc/verify_certificate" \
+              -H "apikey: $SB_KEY" -H "Content-Type: application/json" \
+              -d '{"p_token":"00000000-0000-0000-0000-000000000000"}')
+            echo "Attempt $i: Supabase answered HTTP $code"
+            if [ "$code" = "200" ]; then exit 0; fi
+            sleep 20
+          done
+          echo "Supabase did not answer. If the project is paused, open the Supabase dashboard and press Restore."
+          exit 1
